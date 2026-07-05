@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
@@ -45,18 +46,71 @@ class PieceComponent extends PositionComponent with TapCallbacks {
     var board = game.children.whereType<BoardComponent>().first;
     width = board.cellSize * 0.6;
     height = board.cellSize * 0.6;
-    _updatePositionInstantly();
+    
+    // Only update position instantly if we are not currently animating.
+    // This prevents UI state changes (like tapping) from causing a layout shift
+    // that instantly snaps the piece to its destination during a MoveToEffect.
+    if (children.whereType<MoveToEffect>().isEmpty) {
+      _updatePositionInstantly();
+    }
+  }
+
+  double _time = 0;
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _time += dt;
   }
 
   @override
   void render(Canvas canvas) {
-    canvas.drawCircle(Offset(width/2, height/2), width/2, _paint);
-    canvas.drawCircle(Offset(width/2, height/2), width/2, _strokePaint);
-    
-    if (game.waitingForPlayerMove && piece.playerId == game.gameState.players[game.gameState.currentPlayerIndex].id) {
-       // Highlight movable piece
-       canvas.drawCircle(Offset(width/2, height/2), width/2 + 2, Paint()..color=Colors.white..style=PaintingStyle.stroke..strokeWidth=2.0);
+    bool isMyTurn = piece.playerId == game.gameState.players[game.gameState.currentPlayerIndex].id;
+    bool isWaitingForMe = game.waitingForPlayerMove && isMyTurn;
+    bool isValid = isWaitingForMe && game.gameState.lastRoll != null && game.isValidMove(piece, game.gameState.lastRoll!);
+
+    double alpha = 1.0;
+    if (piece.isFinished) {
+      alpha = 0.5;
+    } else if (isWaitingForMe && !isValid) {
+      alpha = 0.5; // Invalid pieces (cannot move this turn): opacity 0.5
     }
+
+    canvas.save();
+    canvas.translate(width / 2, height / 2);
+
+    if (isValid) {
+      canvas.scale(1.1);
+    }
+
+    Paint currentPaint = Paint()..color = _paint.color.withAlpha((alpha * 255).toInt());
+    Paint currentStroke = Paint()
+      ..color = _strokePaint.color.withAlpha((alpha * 255).toInt())
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    canvas.drawCircle(Offset.zero, width / 2, currentPaint);
+    canvas.drawCircle(Offset.zero, width / 2, currentStroke);
+    
+    if (isValid) {
+       // Oscillate opacity 0.6 -> 1.0 -> 0.6 every 600ms
+       // sin(t) gives -1 to 1. Normalized gives 0 to 1.
+       double pulse = (math.sin(_time * math.pi * 2 / 0.6) + 1) / 2;
+       double pulseAlpha = 0.6 + (0.4 * pulse);
+       
+       Color ringColor = player.color == PlayerColor.yellow ? Colors.white : const Color(0xFFFFD700);
+       
+       canvas.drawCircle(
+         Offset.zero, 
+         width / 2 + 2, 
+         Paint()
+           ..color = ringColor.withAlpha((pulseAlpha * 255).toInt())
+           ..style = PaintingStyle.stroke
+           ..strokeWidth = 3.0
+       );
+    }
+    
+    canvas.restore();
   }
 
   @override

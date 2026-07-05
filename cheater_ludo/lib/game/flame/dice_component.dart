@@ -19,56 +19,18 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    position = Vector2(size.x / 2, size.y / 2 + 50);
+    position = Vector2(size.x / 2, size.y / 2);
+    
+    // Scale dice proportionally to the board
+    double minDim = min(size.x, size.y) * 0.95;
+    double expectedCellSize = minDim / 15;
+    width = expectedCellSize * 1.5;
+    height = expectedCellSize * 1.5;
   }
 
   @override
   void render(Canvas canvas) {
-    var paint = Paint()..color = Colors.white;
-    var rect = Rect.fromLTWH(0, 0, width, height);
-    var rrect = RRect.fromRectAndRadius(rect, const Radius.circular(8));
-    
-    canvas.drawShadow(Path()..addRRect(rrect), Colors.black, 4.0, true);
-    canvas.drawRRect(rrect, paint);
-    
-    var cp = game.gameState.players[game.gameState.currentPlayerIndex];
-    Color borderColor = Colors.grey;
-    if (!game.gameState.players.every((p) => p.hasWon)) {
-      if (cp.color == PlayerColor.red) borderColor = Colors.red;
-      if (cp.color == PlayerColor.green) borderColor = Colors.green;
-      if (cp.color == PlayerColor.blue) borderColor = Colors.blue;
-      if (cp.color == PlayerColor.yellow) borderColor = Colors.yellow;
-    }
-
-    var borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-    canvas.drawRRect(rrect, borderPaint);
-
-    var dotPaint = Paint()..color = Colors.black;
-    double r = 4.5;
-    double c = width / 2;
-    double l = width * 0.25;
-    double right = width * 0.75;
-    double t = height * 0.25;
-    double b = height * 0.75;
-
-    if (currentFace == 1 || currentFace == 3 || currentFace == 5) {
-      canvas.drawCircle(Offset(c, c), r, dotPaint);
-    }
-    if (currentFace > 1) {
-      canvas.drawCircle(Offset(l, t), r, dotPaint);
-      canvas.drawCircle(Offset(right, b), r, dotPaint);
-    }
-    if (currentFace > 3) {
-      canvas.drawCircle(Offset(right, t), r, dotPaint);
-      canvas.drawCircle(Offset(l, b), r, dotPaint);
-    }
-    if (currentFace == 6) {
-      canvas.drawCircle(Offset(l, c), r, dotPaint);
-      canvas.drawCircle(Offset(right, c), r, dotPaint);
-    }
+    // Hidden: The old center dice is completely removed.
   }
 
   @override

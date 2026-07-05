@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flame/game.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../engine/game_state.dart';
 import '../engine/player.dart';
@@ -62,9 +61,11 @@ class LudoGame extends FlameGame {
   }
 
   void _notifyUI() {
-    Future.delayed(Duration.zero, () {
-      onStateChanged?.call();
-    });
+    if (onStateChanged != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        onStateChanged?.call();
+      });
+    }
   }
 
   Future<void> _startTurn() async {
@@ -109,14 +110,16 @@ class LudoGame extends FlameGame {
     }
 
     isRolling = false;
-    _handlePostRoll(result);
+    _notifyUI();
+    await _handlePostRoll(result);
   }
 
   Future<void> _handlePostRoll(int roll) async {
     var currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    var validPieces = currentPlayer.pieces.where((p) => _isValidMove(p, roll)).toList();
+    var validPieces = currentPlayer.pieces.where((p) => isValidMove(p, roll)).toList();
 
     if (validPieces.isEmpty) {
+      _notifyUI();
       await Future.delayed(const Duration(milliseconds: 800));
       _nextTurn();
       return;
@@ -132,9 +135,8 @@ class LudoGame extends FlameGame {
         _nextTurn();
       }
     } else {
-      // If only one valid move, auto-move it to save time
-      if (validPieces.length == 1 && validPieces.first.position != -1) {
-         // Optionally auto move, but let's let user click for now or auto move
+      // If only one valid move, auto-move it
+      if (validPieces.length == 1) {
          await movePiece(validPieces.first);
       } else {
         waitingForPlayerMove = true;
@@ -143,7 +145,7 @@ class LudoGame extends FlameGame {
     }
   }
 
-  bool _isValidMove(Piece piece, int roll) {
+  bool isValidMove(Piece piece, int roll) {
     if (piece.isFinished) return false;
     if (piece.isHome && roll != 6) return false;
     if (!piece.isHome && piece.position + roll > 56) return false;
@@ -157,7 +159,7 @@ class LudoGame extends FlameGame {
     var currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (piece.playerId != currentPlayer.id) return;
     
-    if (!_isValidMove(piece, gameState.lastRoll!)) return;
+    if (!isValidMove(piece, gameState.lastRoll!)) return;
     
     waitingForPlayerMove = false;
     _notifyUI();
@@ -187,6 +189,7 @@ class LudoGame extends FlameGame {
     _checkWinCondition();
     
     isMoving = false;
+    _notifyUI();
     
     // Extra turn on 6, unless won
     var currentPlayer = gameState.players[gameState.currentPlayerIndex];

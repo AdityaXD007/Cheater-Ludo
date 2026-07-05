@@ -2,14 +2,15 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import '../engine/board_constants.dart';
+import '../engine/player.dart';
 
 import 'ludo_game.dart';
 
 class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
-  static const Color redColor = Color(0xFFE53935);
-  static const Color greenColor = Color(0xFF43A047);
-  static const Color blueColor = Color(0xFF1E88E5);
-  static const Color yellowColor = Color(0xFFFDD835);
+  static const Color redColor = Color(0xFFc0392b);
+  static const Color greenColor = Color(0xFF27ae60);
+  static const Color blueColor = Color(0xFF2980b9);
+  static const Color yellowColor = Color(0xFFf39c12);
   static const Color boardBackground = Color(0xFFEEEEEE);
   static const Color safeColor = Color(0xFFB0BEC5);
 
@@ -19,9 +20,9 @@ class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    double minDim = min(size.x, size.y);
+    double minDim = min(size.x, size.y) * 0.95; // 5% margin
     cellSize = minDim / BoardConstants.boardSize;
-    boardOffset = Vector2((size.x - minDim) / 2, (size.y - minDim) / 2 + 50); // Offset down slightly for UI
+    boardOffset = Vector2((size.x - minDim) / 2, (size.y - minDim) / 2);
   }
 
   @override
@@ -33,9 +34,9 @@ class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
     canvas.drawRect(Rect.fromLTWH(boardOffset.x, boardOffset.y, cellSize * 15, cellSize * 15), bgPaint);
 
     _drawHomeBase(canvas, 0, 0, greenColor);
-    _drawHomeBase(canvas, 9, 0, yellowColor);
+    _drawHomeBase(canvas, 9, 0, blueColor);
     _drawHomeBase(canvas, 0, 9, redColor);
-    _drawHomeBase(canvas, 9, 9, blueColor);
+    _drawHomeBase(canvas, 9, 9, yellowColor);
 
     final outlinePaint = Paint()
       ..color = Colors.black
@@ -68,6 +69,11 @@ class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
           if (x == 8 && y == 1) _fillCell(canvas, rect, blueColor);
           if (x == 13 && y == 8) _fillCell(canvas, rect, yellowColor);
           if (x == 6 && y == 13) _fillCell(canvas, rect, redColor);
+
+          // Draw stars on all safe squares (which includes start squares)
+          if (_isSafeSquare(x, y)) {
+            _drawStar(canvas, rect, color: Colors.white);
+          }
         }
       }
     }
@@ -77,8 +83,32 @@ class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
 
   void _drawHomeBase(Canvas canvas, int gridX, int gridY, Color color) {
     Rect baseRect = _getRect(gridX, gridY, width: 6, height: 6);
+    
+    bool isActive = false;
+    String colorName = "";
+    try {
+      PlayerColor pColor;
+      if (color == redColor) { pColor = PlayerColor.red; colorName = "RED"; }
+      else if (color == greenColor) { pColor = PlayerColor.green; colorName = "GREEN"; }
+      else if (color == blueColor) { pColor = PlayerColor.blue; colorName = "BLUE"; }
+      else { pColor = PlayerColor.yellow; colorName = "YELLOW"; }
+      
+      var p = game.gameState.players.firstWhere((p) => p.color == pColor);
+      if (game.gameState.players[game.gameState.currentPlayerIndex].id == p.id) {
+        isActive = true;
+      }
+    } catch (_) {}
+
     Paint fill = Paint()..color = color;
     canvas.drawRect(baseRect, fill);
+
+    if (isActive) {
+      Paint insetGlowPaint = Paint()
+        ..color = const Color(0xFFffd700).withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0;
+      canvas.drawRect(baseRect.deflate(1.5), insetGlowPaint);
+    }
 
     Rect innerRect = _getRect(gridX + 1, gridY + 1, width: 4, height: 4);
     Paint innerFill = Paint()..color = Colors.white;
@@ -90,6 +120,29 @@ class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
     canvas.drawCircle(Offset(boardOffset.x + (gridX + 3.5) * cellSize, boardOffset.y + (gridY + 2.5) * cellSize), cellSize * 0.8, circlePaint);
     canvas.drawCircle(Offset(boardOffset.x + (gridX + 2.5) * cellSize, boardOffset.y + (gridY + 3.5) * cellSize), cellSize * 0.8, circlePaint);
     canvas.drawCircle(Offset(boardOffset.x + (gridX + 3.5) * cellSize, boardOffset.y + (gridY + 3.5) * cellSize), cellSize * 0.8, circlePaint);
+
+    if (colorName.isNotEmpty) {
+      final textSpan = TextSpan(
+        text: colorName,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11.0,
+          fontWeight: FontWeight.w700,
+          shadows: [Shadow(color: Color(0x66000000), blurRadius: 3, offset: Offset(0, 1))],
+        ),
+      );
+      final textPainter = TextPainter(
+        text: textSpan,
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      );
+      textPainter.layout(minWidth: 0, maxWidth: cellSize * 6);
+      
+      double textY = boardOffset.y + gridY * cellSize + 8.0;
+      double textX = boardOffset.x + gridX * cellSize + (cellSize * 6 - textPainter.width) / 2;
+      
+      textPainter.paint(canvas, Offset(textX, textY));
+    }
   }
 
   void _drawCenter(Canvas canvas) {
@@ -129,6 +182,32 @@ class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
     path.lineTo(cx, cy);
     path.close();
     canvas.drawPath(path, Paint()..color = greenColor);
+  }
+
+  void _drawStar(Canvas canvas, Rect rect, {Color color = Colors.white}) {
+    double cx = rect.center.dx;
+    double cy = rect.center.dy;
+    double rOuter = rect.width * 0.35;
+    double rInner = rect.width * 0.15;
+    int points = 5;
+    double angle = -pi / 2; // start at top
+
+    Path path = Path();
+    for (int i = 0; i < points * 2; i++) {
+      double r = (i % 2 == 0) ? rOuter : rInner;
+      double x = cx + cos(angle) * r;
+      double y = cy + sin(angle) * r;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+      angle += pi / points;
+    }
+    path.close();
+    
+    canvas.drawPath(path, Paint()..color = color..style = PaintingStyle.fill);
+    canvas.drawPath(path, Paint()..color = Colors.black54..style = PaintingStyle.stroke..strokeWidth = 1.0);
   }
 
   void _fillCell(Canvas canvas, Rect rect, Color color) {

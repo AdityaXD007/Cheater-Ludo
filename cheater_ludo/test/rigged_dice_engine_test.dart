@@ -51,7 +51,9 @@ void main() {
       
       // Let's simulate the winner's turn 1000 times (ignoring the early game grace period by advancing turn counts)
       // To bypass grace period, we simulate 3 turns first
-      for(int i=0; i<3; i++) engine.roll(state);
+      for(int i=0; i<3; i++) {
+        engine.roll(state);
+      }
 
       for (int i = 0; i < 1000; i++) {
         int roll = engine.roll(state);

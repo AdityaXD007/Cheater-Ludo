@@ -3,6 +3,7 @@ import 'package:flame/game.dart';
 import '../../game/engine/game_state.dart';
 import '../../game/flame/ludo_game.dart';
 import '../../game/engine/player.dart';
+import '../widgets/dice_painter.dart';
 
 class GameScreen extends StatefulWidget {
   final GameState gameState;
@@ -16,96 +17,205 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final LudoGame _game;
 
+  bool _hasRolled = false;
+  bool _wasMoving = false;
+  int _lastPlayerIndex = -1;
+
   @override
   void initState() {
     super.initState();
     _game = LudoGame(widget.gameState);
+    _lastPlayerIndex = widget.gameState.currentPlayerIndex;
+    
     _game.onStateChanged = () {
-      if (mounted) setState(() {});
+      if (mounted) {
+        if (_lastPlayerIndex != widget.gameState.currentPlayerIndex) {
+           _lastPlayerIndex = widget.gameState.currentPlayerIndex;
+           _hasRolled = false;
+        }
+
+        if (_game.isRolling) {
+           _hasRolled = true;
+        }
+
+        if (_game.isMoving && !_wasMoving) {
+           _wasMoving = true;
+        } else if (!_game.isMoving && _wasMoving) {
+           _wasMoving = false;
+           _hasRolled = false; // Reset for next sub-turn (e.g. if rolled 6)
+        }
+        
+        setState(() {});
+      }
     };
   }
 
   Color _getColor(PlayerColor c) {
-    switch(c) {
-      case PlayerColor.red: return Colors.redAccent;
-      case PlayerColor.green: return Colors.greenAccent;
-      case PlayerColor.blue: return Colors.blueAccent;
-      case PlayerColor.yellow: return Colors.yellowAccent;
+    switch (c) {
+      case PlayerColor.red:
+        return const Color(0xFFc0392b);
+      case PlayerColor.green:
+        return const Color(0xFF27ae60);
+      case PlayerColor.blue:
+        return const Color(0xFF2980b9);
+      case PlayerColor.yellow:
+        return const Color(0xFFf39c12);
     }
+  }
+
+  Widget _buildCornerBadge(Player cp, bool isActive, bool isRolling, bool canRoll, {required bool isLeftCorner}) {
+    int? displayValue;
+    if (!isActive) {
+      displayValue = null;
+    } else if (!_hasRolled || isRolling) {
+      displayValue = null; 
+    } else {
+      displayValue = widget.gameState.lastRoll; 
+    }
+
+    Widget pinBadge = Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(Icons.location_on, color: _getColor(cp.color), size: 18),
+    );
+
+    Widget diceSlot;
+    if (isActive) {
+      diceSlot = DiceWidget(
+        value: displayValue,
+        isRolling: isRolling,
+        rapidRoll: true,
+        size: 42.0,
+        borderRadius: 10.0,
+        border: Border.all(color: const Color(0xFFffd700), width: 2.0),
+        pipColor: Colors.black87,
+        boxShadow: [BoxShadow(color: const Color(0xFFffd700).withValues(alpha: 0.4), blurRadius: 12)],
+        onTap: canRoll ? () => _game.rollDice() : null,
+      );
+    } else {
+      diceSlot = Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08), 
+          borderRadius: BorderRadius.circular(10.0),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _getColor(cp.color).withValues(alpha: 0.8), width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: isLeftCorner 
+          ? [pinBadge, const SizedBox(width: 6), diceSlot]
+          : [diceSlot, const SizedBox(width: 6), pinBadge],
+      ),
+    );
+  }
+
+  Widget _getBadgeFor(PlayerColor color, Player currentPlayer, bool waitingForRoll, {required bool isLeftCorner}) {
+    var matching = widget.gameState.players.where((p) => p.color == color).toList();
+    if (matching.isEmpty) return const SizedBox(width: 80, height: 54);
+    var p = matching.first;
+    bool isActive = currentPlayer.id == p.id;
+    bool canRoll = p.type == PlayerType.human && waitingForRoll && isActive;
+    return _buildCornerBadge(p, isActive, _game.isRolling, canRoll, isLeftCorner: isLeftCorner);
   }
 
   @override
   Widget build(BuildContext context) {
-    var cp = widget.gameState.players[widget.gameState.currentPlayerIndex];
-    
+    var currentPlayer = widget.gameState.players[widget.gameState.currentPlayerIndex];
+    bool waitingForRoll = !_game.isRolling && !_game.isMoving && !_game.waitingForPlayerMove;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        title: const Text('Cheater Ludo'),
-        backgroundColor: const Color(0xFF1E1E1E),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app),
-            onPressed: () {
-               Navigator.pop(context);
-            },
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFF1E1E1E),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1a1a2e),
+          image: DecorationImage(
+            image: const AssetImage('assets/images/game_background.png'),
+            fit: BoxFit.cover,
+            opacity: 0.65, // Dim background image for contrast
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Back Button (keep it so user can leave)
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0, top: 16.0),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              
+              // Board Area
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Current Turn:', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                    Text(
-                      cp.name,
-                      style: TextStyle(
-                        color: _getColor(cp.color),
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    // Top badges row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _getBadgeFor(PlayerColor.green, currentPlayer, waitingForRoll, isLeftCorner: true),
+                          _getBadgeFor(PlayerColor.blue, currentPlayer, waitingForRoll, isLeftCorner: false),
+                        ],
+                      ),
+                    ),
+                    
+                    // Board
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.4),
+                                blurRadius: 30,
+                              ),
+                            ],
+                          ),
+                          child: GameWidget(game: _game),
+                        ),
+                      ),
+                    ),
+                    
+                    // Bottom badges row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _getBadgeFor(PlayerColor.red, currentPlayer, waitingForRoll, isLeftCorner: true),
+                          _getBadgeFor(PlayerColor.yellow, currentPlayer, waitingForRoll, isLeftCorner: false),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                if (widget.gameState.phase == GamePhase.finished)
-                  const Text('GAME OVER', style: TextStyle(color: Colors.red, fontSize: 24, fontWeight: FontWeight.bold))
-                else if (_game.waitingForPlayerMove)
-                  const Text('Your Move!', style: TextStyle(color: Colors.yellow, fontSize: 18, fontWeight: FontWeight.bold))
-                else if (_game.isRolling)
-                  const Text('Rolling...', style: TextStyle(color: Colors.white54, fontSize: 16)),
-              ],
-            ),
+              ),
+            ],
           ),
-          
-          Expanded(
-            child: GameWidget(game: _game),
-          ),
-          
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFF1E1E1E),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                 Text('Last Roll: ${widget.gameState.lastRoll ?? '-'}', 
-                      style: const TextStyle(color: Colors.white, fontSize: 18)),
-                 if (widget.gameState.consecutiveSixes > 0)
-                   Padding(
-                     padding: const EdgeInsets.only(left: 16.0),
-                     child: Text('${widget.gameState.consecutiveSixes} Sixes in a row!', 
-                         style: const TextStyle(color: Colors.orange, fontSize: 16)),
-                   ),
-              ],
-            ),
-          )
-        ],
+        ),
       ),
     );
   }
