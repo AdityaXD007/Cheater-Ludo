@@ -11,6 +11,7 @@ class Player {
   final PlayerColor color;
   final AiDifficulty? difficulty; // null if human
   final List<Piece> pieces; // always 4
+  int? lastRoll;
 
   Player({
     required this.id,

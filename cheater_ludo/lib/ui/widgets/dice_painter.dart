@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
+import '../../utils/haptics.dart';
 
 class DicePainter extends CustomPainter {
   final int value;
@@ -92,22 +93,9 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
   Timer? _timer; // Used for rapid roll
   int _displayValue = 1;
 
-  late AnimationController _pulseController;
-  late Animation<double> _pulseScale;
-
   @override
   void initState() {
     super.initState();
-    
-    // Idle Pulse: 1.0 -> 1.05 -> 1.0 (~1.2s loop)
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    );
-    _pulseScale = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
     _startAnimationIfNeeded();
   }
 
@@ -115,8 +103,6 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
     _timer?.cancel();
     
     if (widget.isRolling) {
-      _pulseController.stop();
-
       if (widget.rapidRoll) {
         _timer = Timer.periodic(const Duration(milliseconds: 60), (timer) {
           setState(() {
@@ -124,12 +110,8 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
           });
         });
       }
-    } else if (widget.value == null) {
-      // Idle state
-      _pulseController.repeat(reverse: true);
-    } else {
+    } else if (widget.value != null) {
       // Result shown
-      _pulseController.stop();
       _displayValue = widget.value!;
     }
   }
@@ -146,22 +128,16 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
   @override
   void dispose() {
     _timer?.cancel();
-    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isIdle = widget.value == null && !widget.isRolling;
-
     Widget diceContent;
-    if (isIdle) {
-      diceContent = ScaleTransition(
-        scale: _pulseScale,
-        child: Image.asset(
-          'assets/images/dice_roll_icon.png',
-          fit: BoxFit.contain,
-        ),
+    if (widget.value == null && !widget.isRolling) {
+      // Default to 1 if no value is provided and not rolling
+      diceContent = CustomPaint(
+        painter: DicePainter(1, widget.pipColor),
       );
     } else {
       diceContent = CustomPaint(
@@ -170,21 +146,24 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
     }
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: widget.onTap != null ? () {
+        Haptics.tap();
+        widget.onTap!();
+      } : null,
       child: Container(
         width: widget.size,
         height: widget.size,
         decoration: BoxDecoration(
-          color: isIdle ? Colors.transparent : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(widget.borderRadius),
-          border: isIdle ? null : widget.border,
-          boxShadow: isIdle ? null : (widget.boxShadow ?? [
+          border: widget.border,
+          boxShadow: widget.boxShadow ?? [
             BoxShadow(
               color: const Color(0xFF1e5aa0).withValues(alpha: 0.2),
               blurRadius: 24,
               offset: Offset.zero,
             ),
-          ]),
+          ],
         ),
         child: diceContent,
       ),

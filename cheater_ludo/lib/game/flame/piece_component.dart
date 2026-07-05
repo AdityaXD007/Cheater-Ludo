@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
+import '../../utils/haptics.dart';
 import '../engine/piece.dart';
 import '../engine/player.dart';
 import '../engine/board_constants.dart';
@@ -115,6 +116,7 @@ class PieceComponent extends PositionComponent with TapCallbacks {
 
   @override
   void onTapDown(TapDownEvent event) {
+    Haptics.tap();
     game.handlePieceTap(piece);
   }
 

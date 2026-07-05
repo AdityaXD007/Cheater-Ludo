@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../engine/game_state.dart';
 import '../engine/player.dart';
 import '../engine/piece.dart';
+import '../../utils/haptics.dart';
 import '../engine/rigged_dice_engine.dart';
 import '../engine/board_constants.dart';
 import '../ai/ai_player.dart';
@@ -86,6 +87,8 @@ class LudoGame extends FlameGame {
   Future<void> rollDice() async {
     if (isRolling || isMoving || waitingForPlayerMove) return;
     
+    Haptics.heavy();
+    
     isRolling = true;
     _notifyUI();
 
@@ -95,6 +98,7 @@ class LudoGame extends FlameGame {
     
     gameState.lastRoll = result;
     gameState.rollHistory.add(result);
+    gameState.players[gameState.currentPlayerIndex].lastRoll = result;
     
     if (result == 6) {
       gameState.consecutiveSixes++;

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
+import '../../utils/haptics.dart';
 import '../engine/player.dart';
 import 'ludo_game.dart';
 
@@ -39,6 +40,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     
     var cp = game.gameState.players[game.gameState.currentPlayerIndex];
     if (cp.type == PlayerType.human) {
+      Haptics.tap();
       game.rollDice();
     }
   }

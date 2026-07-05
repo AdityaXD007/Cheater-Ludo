@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'setup_screen.dart';
 import '../widgets/dice_painter.dart';
+import '../../utils/haptics.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -152,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           elevation: 0,
                         ),
                         onPressed: () {
+                          Haptics.medium();
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const SetupScreen()),

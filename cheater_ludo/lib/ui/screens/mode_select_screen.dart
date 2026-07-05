@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'setup_screen.dart';
 import 'game_mode.dart';
+import '../../utils/haptics.dart';
 
 /// Color theme for each game mode card.
 class _CardTheme {
@@ -351,6 +352,7 @@ class _GameModeCardState extends State<_GameModeCard>
         onTapDown: (_) => _pressController.forward(),
         onTapUp: (_) {
           _pressController.reverse();
+          Haptics.tap();
           widget.onTap();
         },
         onTapCancel: () => _pressController.reverse(),

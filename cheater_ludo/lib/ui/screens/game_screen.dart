@@ -4,6 +4,7 @@ import '../../game/engine/game_state.dart';
 import '../../game/flame/ludo_game.dart';
 import '../../game/engine/player.dart';
 import '../widgets/dice_painter.dart';
+import '../../utils/haptics.dart';
 
 class GameScreen extends StatefulWidget {
   final GameState gameState;
@@ -17,7 +18,6 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final LudoGame _game;
 
-  bool _hasRolled = false;
   bool _wasMoving = false;
   int _lastPlayerIndex = -1;
 
@@ -31,18 +31,12 @@ class _GameScreenState extends State<GameScreen> {
       if (mounted) {
         if (_lastPlayerIndex != widget.gameState.currentPlayerIndex) {
            _lastPlayerIndex = widget.gameState.currentPlayerIndex;
-           _hasRolled = false;
-        }
-
-        if (_game.isRolling) {
-           _hasRolled = true;
         }
 
         if (_game.isMoving && !_wasMoving) {
            _wasMoving = true;
         } else if (!_game.isMoving && _wasMoving) {
            _wasMoving = false;
-           _hasRolled = false; // Reset for next sub-turn (e.g. if rolled 6)
         }
         
         setState(() {});
@@ -65,12 +59,10 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildCornerBadge(Player cp, bool isActive, bool isRolling, bool canRoll, {required bool isLeftCorner}) {
     int? displayValue;
-    if (!isActive) {
+    if (isActive && isRolling) {
       displayValue = null;
-    } else if (!_hasRolled || isRolling) {
-      displayValue = null; 
     } else {
-      displayValue = widget.gameState.lastRoll; 
+      displayValue = cp.lastRoll ?? 1;
     }
 
     Widget pinBadge = Container(
@@ -83,30 +75,23 @@ class _GameScreenState extends State<GameScreen> {
       child: Icon(Icons.location_on, color: _getColor(cp.color), size: 18),
     );
 
-    Widget diceSlot;
-    if (isActive) {
-      diceSlot = DiceWidget(
-        value: displayValue,
-        isRolling: isRolling,
-        rapidRoll: true,
-        size: 42.0,
-        borderRadius: 10.0,
-        border: Border.all(color: const Color(0xFFffd700), width: 2.0),
-        pipColor: Colors.black87,
-        boxShadow: [BoxShadow(color: const Color(0xFFffd700).withValues(alpha: 0.4), blurRadius: 12)],
-        onTap: canRoll ? () => _game.rollDice() : null,
-      );
-    } else {
-      diceSlot = Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08), 
-          borderRadius: BorderRadius.circular(10.0),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
-        ),
-      );
-    }
+    Widget diceSlot = DiceWidget(
+      value: displayValue,
+      isRolling: isActive ? isRolling : false,
+      rapidRoll: isActive,
+      size: 42.0,
+      borderRadius: 10.0,
+      border: Border.all(
+        color: isActive ? const Color(0xFFffd700) : Colors.white.withValues(alpha: 0.15), 
+        width: isActive ? 2.0 : 1.5
+      ),
+      pipColor: isActive ? Colors.black87 : Colors.white70,
+      boxShadow: isActive ? [BoxShadow(color: const Color(0xFFffd700).withValues(alpha: 0.4), blurRadius: 12)] : null,
+      onTap: (isActive && canRoll) ? () {
+        Haptics.tap();
+        _game.rollDice();
+      } : null,
+    );
 
     return Container(
       padding: const EdgeInsets.all(5),
@@ -159,7 +144,10 @@ class _GameScreenState extends State<GameScreen> {
                   icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    Haptics.tap();
+                    Navigator.pop(context);
+                  },
                 ),
               ),
               

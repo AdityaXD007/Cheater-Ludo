@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
 import 'mode_select_screen.dart';
+import '../../utils/haptics.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -359,7 +360,10 @@ class _LoadingScreenState extends State<LoadingScreen>
             ),
             elevation: 0,
           ),
-          onPressed: _navigateToHome,
+          onPressed: () {
+            Haptics.medium();
+            _navigateToHome();
+          },
           child: const Text(
             'PLAY',
             style: TextStyle(
