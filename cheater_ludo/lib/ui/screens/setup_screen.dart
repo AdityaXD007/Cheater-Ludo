@@ -475,6 +475,7 @@ class PlayerRow extends StatelessWidget {
   final GestureTapDownCallback? onPawnTapDown;
   final GestureTapUpCallback? onPawnTapUp;
   final GestureTapCancelCallback? onPawnTapCancel;
+  final Widget? customContent;
 
   const PlayerRow({
     super.key,
@@ -487,6 +488,7 @@ class PlayerRow extends StatelessWidget {
     this.onPawnTapDown,
     this.onPawnTapUp,
     this.onPawnTapCancel,
+    this.customContent,
   });
 
   @override
@@ -533,7 +535,7 @@ class PlayerRow extends StatelessWidget {
                       ]
                     : [],
               ),
-              child: Row(
+              child: customContent ?? Row(
                 children: [
                   Expanded(
                     child: Text(
@@ -586,23 +588,48 @@ class _SetupScreenState extends State<SetupScreen> {
   int? _designatedWinnerId;
   Timer? _longPressTimer;
 
-  static const _pawnActiveColors = [
-    PawnColorSet.red,
-    PawnColorSet.gold,
-    PawnColorSet.green,
-    PawnColorSet.blue,
-  ];
+  PlayerColor _humanColor = PlayerColor.red;
+
+  PawnColorSet _getPawnColor(PlayerColor c) {
+    switch (c) {
+      case PlayerColor.red: return PawnColorSet.red;
+      case PlayerColor.yellow: return PawnColorSet.gold;
+      case PlayerColor.green: return PawnColorSet.green;
+      case PlayerColor.blue: return PawnColorSet.blue;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     final bool isVsComputer = widget.mode == GameMode.vsComputer;
-    _configs = [
-      PlayerConfig(id: 0, color: PlayerColor.red, name: 'Player 1', type: PlayerType.human),
-      PlayerConfig(id: 1, color: PlayerColor.green, name: 'Player 2', type: isVsComputer ? PlayerType.ai : PlayerType.human),
-      PlayerConfig(id: 2, color: PlayerColor.blue, name: 'Player 3', type: isVsComputer ? PlayerType.ai : PlayerType.human),
-      PlayerConfig(id: 3, color: PlayerColor.yellow, name: 'Player 4', type: isVsComputer ? PlayerType.ai : PlayerType.human),
-    ];
+    if (isVsComputer) {
+      _configs = [
+        PlayerConfig(id: 0, color: _humanColor, name: 'You', type: PlayerType.human),
+        PlayerConfig(id: 1, color: PlayerColor.green, name: 'AI 1', type: PlayerType.ai),
+        PlayerConfig(id: 2, color: PlayerColor.blue, name: 'AI 2', type: PlayerType.ai),
+        PlayerConfig(id: 3, color: PlayerColor.yellow, name: 'AI 3', type: PlayerType.ai),
+      ];
+      _updateColorsForVsComputer();
+    } else {
+      _configs = [
+        PlayerConfig(id: 0, color: PlayerColor.red, name: 'Player 1', type: PlayerType.human),
+        PlayerConfig(id: 1, color: PlayerColor.yellow, name: 'Player 2', type: PlayerType.human),
+        PlayerConfig(id: 2, color: PlayerColor.green, name: 'Player 3', type: PlayerType.human),
+        PlayerConfig(id: 3, color: PlayerColor.blue, name: 'Player 4', type: PlayerType.human),
+      ];
+    }
+  }
+
+  void _updateColorsForVsComputer() {
+    List<PlayerColor> available = PlayerColor.values.toList();
+    available.remove(_humanColor);
+    _configs[0].color = _humanColor;
+    for (int i = 1; i < 4; i++) {
+      _configs[i].color = available[i - 1];
+      _configs[i].name = 'AI $i';
+      _configs[i].type = PlayerType.ai;
+    }
   }
 
   @override
@@ -795,9 +822,9 @@ class _SetupScreenState extends State<SetupScreen> {
                     ),
                   ),
                   // Title
-                  const Text(
-                    'Local',
-                    style: TextStyle(
+                  Text(
+                    widget.mode == GameMode.vsComputer ? 'Vs AI' : 'Local',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -843,14 +870,67 @@ class _SetupScreenState extends State<SetupScreen> {
                 final config = _configs[index];
                 final isActive = index < _activePlayerCount;
                 final isRigged = _designatedWinnerId == config.id;
+                final isVsComputer = widget.mode == GameMode.vsComputer;
+
+                if (isVsComputer && index == 0) {
+                  return PlayerRow(
+                    index: index,
+                    name: 'You',
+                    isActive: isActive,
+                    isRigged: isRigged,
+                    pawnColors: _getPawnColor(_humanColor),
+                    onPawnTapDown: isActive
+                        ? (_) {
+                            _longPressTimer = Timer(
+                              const Duration(milliseconds: 800),
+                              () {
+                                setState(() {
+                                  _designatedWinnerId = config.id;
+                                });
+                              },
+                            );
+                          }
+                        : null,
+                    onPawnTapUp: isActive ? (_) => _longPressTimer?.cancel() : null,
+                    onPawnTapCancel: isActive ? () => _longPressTimer?.cancel() : null,
+                    customContent: Row(
+                      children: [
+                        const Text('You', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF4A4A4A))),
+                        const Spacer(),
+                        ...PlayerColor.values.where((c) => c != _humanColor).map((color) {
+                          return GestureDetector(
+                            onTap: () {
+                              Haptics.selection();
+                              setState(() {
+                                _humanColor = color;
+                                _updateColorsForVsComputer();
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 12),
+                              child: SizedBox(
+                                width: 22,
+                                height: 32,
+                                child: PawnWidget(
+                                  colors: _getPawnColor(color),
+                                  showGlow: false,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                }
 
                 return PlayerRow(
                   index: index,
                   name: config.name,
                   isActive: isActive,
                   isRigged: isRigged,
-                  pawnColors: _pawnActiveColors[index],
-                  onEdit: isActive ? () => _showRenameDialog(index) : null,
+                  pawnColors: _getPawnColor(config.color),
+                  onEdit: (isActive && (!isVsComputer || index == 0)) ? () => _showRenameDialog(index) : null,
                   onPawnTapDown: isActive
                       ? (_) {
                           _longPressTimer = Timer(
@@ -911,7 +991,7 @@ class _SetupScreenState extends State<SetupScreen> {
 // ─── PlayerConfig (preserved from original) ────────────────────────────
 class PlayerConfig {
   final int id;
-  final PlayerColor color;
+  PlayerColor color;
   String name;
   PlayerType type;
   AiDifficulty difficulty;

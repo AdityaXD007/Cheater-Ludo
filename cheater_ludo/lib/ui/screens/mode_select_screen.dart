@@ -1,8 +1,10 @@
-
 import 'package:flutter/material.dart';
 import 'setup_screen.dart';
 import 'game_mode.dart';
+import 'game_screen.dart';
 import '../../utils/haptics.dart';
+import '../../game/engine/game_state.dart';
+import '../../services/game_storage_service.dart';
 
 /// Color theme for each game mode card.
 class _CardTheme {
@@ -60,9 +62,12 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
     ),
   ];
 
+  GameState? _savedGame;
+
   @override
   void initState() {
     super.initState();
+    _loadSavedGame();
     _entranceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -77,6 +82,15 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
       CurvedAnimation(parent: _entranceController, curve: Curves.easeOut),
     );
     _entranceController.forward();
+  }
+
+  Future<void> _loadSavedGame() async {
+    final savedGame = await GameStorageService.loadGame();
+    if (mounted && savedGame != null) {
+      setState(() {
+        _savedGame = savedGame;
+      });
+    }
   }
 
   @override
@@ -264,6 +278,44 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
                   ),
                 ),
               ),
+
+              if (_savedGame != null)
+                SlideTransition(
+                  position: _slideUp,
+                  child: FadeTransition(
+                    opacity: _fadeIn,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 24.0),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4caf50),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          elevation: 4,
+                        ),
+                        onPressed: () {
+                          Haptics.medium();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => GameScreen(gameState: _savedGame!)),
+                          ).then((_) => _loadSavedGame()); // Reload when coming back
+                        },
+                        child: const Text(
+                          'RESUME GAME',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

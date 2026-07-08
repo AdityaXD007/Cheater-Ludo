@@ -732,4 +732,46 @@ class RiggedDiceEngine {
       return true;
     }());
   }
+
+  // ---------------------------------------------------------------------------
+  // Serialization (Save & Resume)
+  // ---------------------------------------------------------------------------
+
+  Map<String, dynamic> toJson() => {
+    'turnCounts': _turnCounts.map((k, v) => MapEntry(k.toString(), v)),
+    'unfavorableStreaks': _unfavorableStreaks.map((k, v) => MapEntry(k.toString(), v)),
+    'graceTurns': _graceTurns.map((k, v) => MapEntry(k.toString(), v)),
+    'finalPieceStuckTurns': _finalPieceStuckTurns.map((k, v) => MapEntry(k.toString(), v)),
+    'isHardMode': _isHardMode,
+  };
+
+  void loadFromJson(Map<String, dynamic> json) {
+    if (json['turnCounts'] != null) {
+      _turnCounts.clear();
+      (json['turnCounts'] as Map).forEach((k, v) {
+        _turnCounts[int.parse(k.toString())] = v as int;
+      });
+    }
+    if (json['unfavorableStreaks'] != null) {
+      _unfavorableStreaks.clear();
+      (json['unfavorableStreaks'] as Map).forEach((k, v) {
+        _unfavorableStreaks[int.parse(k.toString())] = v as int;
+      });
+    }
+    if (json['graceTurns'] != null) {
+      _graceTurns.clear();
+      (json['graceTurns'] as Map).forEach((k, v) {
+        _graceTurns[int.parse(k.toString())] = v as int;
+      });
+    }
+    if (json['finalPieceStuckTurns'] != null) {
+      _finalPieceStuckTurns.clear();
+      (json['finalPieceStuckTurns'] as Map).forEach((k, v) {
+        _finalPieceStuckTurns[int.parse(k.toString())] = v as int;
+      });
+    }
+    if (json['isHardMode'] != null) {
+      _isHardMode = json['isHardMode'] as bool;
+    }
+  }
 }

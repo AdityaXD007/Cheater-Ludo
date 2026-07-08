@@ -131,6 +131,48 @@ class _GameScreenState extends State<GameScreen> {
     return _buildCornerBadge(p, isActive, _game.isRolling, canRoll, isLeftCorner: isLeftCorner);
   }
 
+  void _showPauseMenu(BuildContext context) {
+    _game.pauseEngine();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1a1a2e),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Colors.white24),
+          ),
+          title: const Text('Game Paused', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: const Text('What would you like to do?', style: TextStyle(color: Colors.white70)),
+          actionsAlignment: MainAxisAlignment.spaceBetween,
+          actions: [
+            TextButton(
+              onPressed: () {
+                Haptics.tap();
+                Navigator.pop(context); // Close dialog
+                Navigator.pop(context); // Exit game screen
+              },
+              child: const Text('Exit Game', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4caf50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Haptics.tap();
+                Navigator.pop(context); // Close dialog
+                _game.resumeEngine();
+              },
+              child: const Text('Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var currentPlayer = widget.gameState.players[widget.gameState.currentPlayerIndex];
@@ -150,16 +192,16 @@ class _GameScreenState extends State<GameScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back Button (keep it so user can leave)
+              // Pause Button
               Padding(
                 padding: const EdgeInsets.only(left: 16.0, top: 16.0),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                  icon: const Icon(Icons.pause, color: Colors.white, size: 28),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {
                     Haptics.tap();
-                    Navigator.pop(context);
+                    _showPauseMenu(context);
                   },
                 ),
               ),

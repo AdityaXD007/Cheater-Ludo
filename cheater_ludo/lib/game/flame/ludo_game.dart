@@ -9,6 +9,7 @@ import '../../utils/haptics.dart';
 import '../engine/rigged_dice_engine.dart';
 import '../engine/board_constants.dart';
 import '../ai/ai_player.dart';
+import '../../services/game_storage_service.dart';
 import 'board_component.dart';
 import 'piece_component.dart';
 
@@ -28,6 +29,9 @@ class LudoGame extends FlameGame {
 
   LudoGame(this.gameState) {
     diceEngine = RiggedDiceEngine();
+    if (gameState.riggedEngineState != null) {
+      diceEngine.loadFromJson(gameState.riggedEngineState!);
+    }
     
     // Initialize AI players
     for (var p in gameState.players) {
@@ -67,6 +71,10 @@ class LudoGame extends FlameGame {
 
   Future<void> _startTurn() async {
     if (gameState.phase != GamePhase.playing) return;
+
+    // Save game state at the true start of a turn (after previous move and engine state updates)
+    gameState.riggedEngineState = diceEngine.toJson();
+    GameStorageService.saveGame(gameState);
     
     var currentPlayer = gameState.players[gameState.currentPlayerIndex];
     waitingForPlayerMove = false;
@@ -253,6 +261,7 @@ class LudoGame extends FlameGame {
       // Technically should remove player and continue, but for now just end game
       gameState.phase = GamePhase.finished;
       _notifyUI();
+      GameStorageService.clearGame();
     }
   }
 
