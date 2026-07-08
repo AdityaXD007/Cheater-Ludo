@@ -1,20 +1,44 @@
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
-import 'package:flutter/material.dart';
 import '../../utils/haptics.dart';
 import '../engine/player.dart';
 import 'ludo_game.dart';
 
-class DiceComponent extends PositionComponent with TapCallbacks {
+class DiceComponent extends SpriteAnimationComponent with TapCallbacks {
   final LudoGame game;
   int currentFace = 1;
-  final Random _random = Random();
+  late SpriteAnimation _rollAnimation;
+  final Map<int, SpriteAnimation> _faceAnimations = {};
 
   DiceComponent({required this.game}) {
     width = 60;
     height = 60;
     anchor = Anchor.center;
+  }
+
+  @override
+  Future<void> onLoad() async {
+    List<String> framePaths = List.generate(
+      25, 
+      (i) => 'dice/roll/roll_${(i+1).toString().padLeft(4, '0')}.png'
+    );
+    await game.images.loadAll(framePaths);
+    
+    List<String> facePaths = List.generate(6, (i) => 'dice/final/face_${i+1}.png');
+    await game.images.loadAll(facePaths);
+
+    List<Sprite> rollSprites = framePaths.map((path) => Sprite(game.images.fromCache(path))).toList();
+    _rollAnimation = SpriteAnimation.spriteList(rollSprites, stepTime: 0.033, loop: false);
+
+    for (int i = 1; i <= 6; i++) {
+      _faceAnimations[i] = SpriteAnimation.spriteList(
+        [Sprite(game.images.fromCache('dice/final/face_$i.png'))],
+        stepTime: double.infinity,
+      );
+    }
+    
+    animation = _faceAnimations[1];
   }
 
   @override
@@ -25,13 +49,8 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     // Scale dice proportionally to the board
     double minDim = min(size.x, size.y) * 0.95;
     double expectedCellSize = minDim / 15;
-    width = expectedCellSize * 1.5;
-    height = expectedCellSize * 1.5;
-  }
-
-  @override
-  void render(Canvas canvas) {
-    // Hidden: The old center dice is completely removed.
+    width = expectedCellSize * 2.0;
+    height = expectedCellSize * 2.0;
   }
 
   @override
@@ -46,10 +65,14 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   }
 
   Future<void> animateRoll(int finalResult) async {
-    for (int i = 0; i < 10; i++) {
-      currentFace = _random.nextInt(6) + 1;
-      await Future.delayed(const Duration(milliseconds: 60));
-    }
+    animation = _rollAnimation;
+    animationTicker?.reset();
+    
+    // Fallback to a reliable timer since Flame's ticker.completed can hang
+    // 25 frames * 0.033s = ~825ms
+    await Future.delayed(const Duration(milliseconds: 825));
+    
+    animation = _faceAnimations[finalResult];
     currentFace = finalResult;
   }
 }

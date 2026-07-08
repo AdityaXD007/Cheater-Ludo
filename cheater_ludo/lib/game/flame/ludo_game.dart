@@ -10,7 +10,7 @@ import '../engine/board_constants.dart';
 import '../ai/ai_player.dart';
 import 'board_component.dart';
 import 'piece_component.dart';
-import 'dice_component.dart';
+
 
 class LudoGame extends FlameGame {
   final GameState gameState;
@@ -23,7 +23,6 @@ class LudoGame extends FlameGame {
   bool isMoving = false;
   bool waitingForPlayerMove = false;
   
-  late DiceComponent diceComponent;
   final Map<int, AiPlayer> _aiPlayers = {};
 
   LudoGame(this.gameState) {
@@ -51,10 +50,6 @@ class LudoGame extends FlameGame {
         add(PieceComponent(piece: piece, player: player, game: this));
       }
     }
-    
-    // Add Dice
-    diceComponent = DiceComponent(game: this);
-    add(diceComponent);
     
     gameState.phase = GamePhase.playing;
     _notifyUI();
@@ -92,30 +87,38 @@ class LudoGame extends FlameGame {
     isRolling = true;
     _notifyUI();
 
-    int result = diceEngine.roll(gameState);
-    
-    await diceComponent.animateRoll(result);
-    
-    gameState.lastRoll = result;
-    gameState.rollHistory.add(result);
-    gameState.players[gameState.currentPlayerIndex].lastRoll = result;
-    
-    if (result == 6) {
-      gameState.consecutiveSixes++;
-      if (gameState.consecutiveSixes >= 3) {
-        // Forfeit turn
+    try {
+      int result = diceEngine.roll(gameState);
+      
+      // Wait for corner badge dice animation to play (25 frames * 33ms)
+      await Future.delayed(const Duration(milliseconds: 825));
+      
+      gameState.lastRoll = result;
+      gameState.rollHistory.add(result);
+      gameState.players[gameState.currentPlayerIndex].lastRoll = result;
+      
+      if (result == 6) {
+        gameState.consecutiveSixes++;
+        if (gameState.consecutiveSixes >= 3) {
+          // Forfeit turn
+          gameState.consecutiveSixes = 0;
+          isRolling = false;
+          _notifyUI();
+          _nextTurn();
+          return;
+        }
+      } else {
         gameState.consecutiveSixes = 0;
-        isRolling = false;
-        _nextTurn();
-        return;
       }
-    } else {
-      gameState.consecutiveSixes = 0;
-    }
 
-    isRolling = false;
-    _notifyUI();
-    await _handlePostRoll(result);
+      isRolling = false;
+      _notifyUI();
+      await _handlePostRoll(result);
+    } catch (e) {
+      isRolling = false;
+      _notifyUI();
+      rethrow;
+    }
   }
 
   Future<void> _handlePostRoll(int roll) async {

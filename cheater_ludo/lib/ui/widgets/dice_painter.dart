@@ -1,63 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:math';
+import 'package:flutter/material.dart';
 import '../../utils/haptics.dart';
-
-class DicePainter extends CustomPainter {
-  final int value;
-  final Color pipColor;
-
-  DicePainter(this.value, this.pipColor);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (value < 1 || value > 6) return;
-
-    final dotPaint = Paint()
-      ..color = pipColor
-      ..style = PaintingStyle.fill;
-
-    final double dotRadius = 6.0; // Fixed 6px radius as requested
-
-    void drawDot(double xFrac, double yFrac) {
-      canvas.drawCircle(Offset(size.width * xFrac, size.height * yFrac), dotRadius, dotPaint);
-    }
-
-    if (value == 1) {
-      drawDot(0.5, 0.5);
-    } else if (value == 2) {
-      drawDot(0.75, 0.25);
-      drawDot(0.25, 0.75);
-    } else if (value == 3) {
-      drawDot(0.75, 0.25);
-      drawDot(0.5, 0.5);
-      drawDot(0.25, 0.75);
-    } else if (value == 4) {
-      drawDot(0.25, 0.25);
-      drawDot(0.75, 0.25);
-      drawDot(0.25, 0.75);
-      drawDot(0.75, 0.75);
-    } else if (value == 5) {
-      drawDot(0.25, 0.25);
-      drawDot(0.75, 0.25);
-      drawDot(0.5, 0.5);
-      drawDot(0.25, 0.75);
-      drawDot(0.75, 0.75);
-    } else if (value == 6) {
-      drawDot(0.25, 0.25);
-      drawDot(0.25, 0.5);
-      drawDot(0.25, 0.75);
-      drawDot(0.75, 0.25);
-      drawDot(0.75, 0.5);
-      drawDot(0.75, 0.75);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant DicePainter oldDelegate) {
-    return oldDelegate.value != value || oldDelegate.pipColor != pipColor;
-  }
-}
 
 class DiceWidget extends StatefulWidget {
   final int? value;
@@ -69,19 +12,19 @@ class DiceWidget extends StatefulWidget {
   final List<BoxShadow>? boxShadow;
   final double borderRadius;
   final Color pipColor;
-  final bool rapidRoll; // Determines if it should do the 80ms rapid roll
+  final bool rapidRoll;
 
   const DiceWidget({
     super.key,
     this.value,
     this.isRolling = false,
     this.onTap,
-    this.size = 80.0,
+    this.size = 50,
     this.rollDuration = const Duration(milliseconds: 600),
     this.border,
     this.boxShadow,
     this.borderRadius = 16.0,
-    this.pipColor = const Color(0xFF2980b9), // Default blue
+    this.pipColor = const Color(0xFF2980b9), // Note: pipColor might not apply to pre-rendered sprites
     this.rapidRoll = false,
   });
 
@@ -89,9 +32,10 @@ class DiceWidget extends StatefulWidget {
   State<DiceWidget> createState() => _DiceWidgetState();
 }
 
-class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateMixin {
-  Timer? _timer; // Used for rapid roll
-  int _displayValue = 1;
+class _DiceWidgetState extends State<DiceWidget> {
+  static bool _imagesPrecached = false;
+  Timer? _timer;
+  int _frame = 1;
 
   @override
   void initState() {
@@ -99,20 +43,37 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
     _startAnimationIfNeeded();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_imagesPrecached) {
+      _imagesPrecached = true;
+      // Precache 25 roll frames
+      for (int i = 1; i <= 25; i++) {
+        precacheImage(AssetImage('assets/dice/roll/roll_${i.toString().padLeft(4, '0')}.png'), context);
+      }
+      // Precache 6 static face frames
+      for (int i = 1; i <= 6; i++) {
+        precacheImage(AssetImage('assets/dice/final/face_$i.png'), context);
+      }
+    }
+  }
+
   void _startAnimationIfNeeded() {
     _timer?.cancel();
-    
+    _timer = null;
     if (widget.isRolling) {
-      if (widget.rapidRoll) {
-        _timer = Timer.periodic(const Duration(milliseconds: 60), (timer) {
-          setState(() {
-            _displayValue = Random().nextInt(6) + 1;
-          });
+      _frame = 1;
+      _timer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          _timer = null;
+          return;
+        }
+        setState(() {
+          _frame = (_frame % 25) + 1;
         });
-      }
-    } else if (widget.value != null) {
-      // Result shown
-      _displayValue = widget.value!;
+      });
     }
   }
 
@@ -134,16 +95,34 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     Widget diceContent;
-    if (widget.value == null && !widget.isRolling) {
-      // Default to 1 if no value is provided and not rolling
-      diceContent = CustomPaint(
-        painter: DicePainter(1, widget.pipColor),
+    
+    if (widget.isRolling) {
+      // Rolling state: loop through 25 pre-rendered tumble frames
+      String frameStr = _frame.toString().padLeft(4, '0');
+      diceContent = Image.asset(
+        'assets/dice/roll/roll_$frameStr.png',
+        width: widget.size,
+        height: widget.size,
+        gaplessPlayback: true,
+        fit: BoxFit.contain,
       );
     } else {
-      diceContent = CustomPaint(
-        painter: DicePainter(_displayValue, widget.pipColor),
+      // Idle/Result state: static final face
+      int face = widget.value ?? 1;
+      diceContent = Image.asset(
+        'assets/dice/final/face_$face.png',
+        width: widget.size,
+        height: widget.size,
+        gaplessPlayback: true,
+        fit: BoxFit.contain,
       );
     }
+
+    // Slight zoom to trim remaining transparent margins in the 512x512 PNGs
+    diceContent = Transform.scale(
+      scale: 1.3,
+      child: diceContent,
+    );
 
     return GestureDetector(
       onTap: widget.onTap != null ? () {
@@ -154,18 +133,15 @@ class _DiceWidgetState extends State<DiceWidget> with SingleTickerProviderStateM
         width: widget.size,
         height: widget.size,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.transparent, // Background baked into sprite
           borderRadius: BorderRadius.circular(widget.borderRadius),
           border: widget.border,
-          boxShadow: widget.boxShadow ?? [
-            BoxShadow(
-              color: const Color(0xFF1e5aa0).withValues(alpha: 0.2),
-              blurRadius: 24,
-              offset: Offset.zero,
-            ),
-          ],
+          boxShadow: widget.boxShadow,
         ),
-        child: diceContent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          child: diceContent,
+        ),
       ),
     );
   }

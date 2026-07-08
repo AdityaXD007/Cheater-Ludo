@@ -75,19 +75,32 @@ class _GameScreenState extends State<GameScreen> {
       child: Icon(Icons.location_on, color: _getColor(cp.color), size: 18),
     );
 
+    // Only show dice for the active player
+    if (!isActive) {
+      return Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _getColor(cp.color).withValues(alpha: 0.4), width: 1.5),
+        ),
+        child: pinBadge,
+      );
+    }
+
     Widget diceSlot = DiceWidget(
       value: displayValue,
-      isRolling: isActive ? isRolling : false,
-      rapidRoll: isActive,
+      isRolling: isRolling,
+      rapidRoll: true,
       size: 42.0,
       borderRadius: 10.0,
       border: Border.all(
-        color: isActive ? const Color(0xFFffd700) : Colors.white.withValues(alpha: 0.15), 
-        width: isActive ? 2.0 : 1.5
+        color: const Color(0xFFffd700), 
+        width: 2.0
       ),
-      pipColor: isActive ? Colors.black87 : Colors.white70,
-      boxShadow: isActive ? [BoxShadow(color: const Color(0xFFffd700).withValues(alpha: 0.4), blurRadius: 12)] : null,
-      onTap: (isActive && canRoll) ? () {
+      pipColor: Colors.black87,
+      boxShadow: [BoxShadow(color: const Color(0xFFffd700).withValues(alpha: 0.4), blurRadius: 12)],
+      onTap: canRoll ? () {
         Haptics.tap();
         _game.rollDice();
       } : null,
