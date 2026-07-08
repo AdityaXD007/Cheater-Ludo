@@ -1,6 +1,6 @@
 {
-    "name": "cheater_ludo",
-    "short_name": "cheater_ludo",
+    "name": "Cheater Ludo",
+    "short_name": "Cheater Ludo",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

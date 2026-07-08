@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flame_audio/flame_audio.dart';
 import '../engine/game_state.dart';
 import '../engine/player.dart';
 import '../engine/piece.dart';
@@ -221,7 +222,11 @@ class LudoGame extends FlameGame {
         if (op.position >= 0 && op.position <= 50) {
           int opGlobal = _toGlobal(other.color, op.position);
           if (opGlobal == globalPos) {
-            // Capture!
+            try {
+              FlameAudio.play('capture.mp3');
+            } catch (e) {
+              debugPrint('Capture audio missing: $e');
+            }
             op.position = -1;
             var opComp = children.whereType<PieceComponent>().firstWhere((c) => c.piece == op);
             await opComp.sendHome();

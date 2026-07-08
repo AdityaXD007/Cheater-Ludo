@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame/events.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 import '../../utils/haptics.dart';
 import '../engine/piece.dart';
@@ -128,12 +129,14 @@ class PieceComponent extends PositionComponent with TapCallbacks {
   }
 
   Future<void> moveToBoard() async {
+    FlameAudio.play('piece_move.m4a', volume: 0.6);
     var board = game.children.whereType<BoardComponent>().first;
     Vector2 target = _getVectorForPosition(0, board);
     await _animateTo(target);
   }
 
   Future<void> moveToNextSquare() async {
+    FlameAudio.play('piece_move.m4a', volume: 0.6);
     var board = game.children.whereType<BoardComponent>().first;
     Vector2 target = _getVectorForPosition(piece.position, board);
     await _animateTo(target);

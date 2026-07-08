@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import '../../utils/haptics.dart';
 import '../engine/player.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'ludo_game.dart';
 
 class DiceComponent extends SpriteAnimationComponent with TapCallbacks {
@@ -23,10 +24,16 @@ class DiceComponent extends SpriteAnimationComponent with TapCallbacks {
       25, 
       (i) => 'dice/roll/roll_${(i+1).toString().padLeft(4, '0')}.png'
     );
-    await game.images.loadAll(framePaths);
-    
     List<String> facePaths = List.generate(6, (i) => 'dice/final/face_${i+1}.png');
-    await game.images.loadAll(facePaths);
+
+    await Future.wait([
+      game.images.loadAll(framePaths),
+      game.images.loadAll(facePaths),
+      FlameAudio.audioCache.loadAll([
+        'dice_roll.m4a',
+        'piece_move.m4a',
+      ]),
+    ]);
 
     List<Sprite> rollSprites = framePaths.map((path) => Sprite(game.images.fromCache(path))).toList();
     _rollAnimation = SpriteAnimation.spriteList(rollSprites, stepTime: 0.033, loop: false);

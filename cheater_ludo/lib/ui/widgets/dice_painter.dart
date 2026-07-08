@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flame_audio/flame_audio.dart';
 import '../../utils/haptics.dart';
 
 class DiceWidget extends StatefulWidget {
@@ -63,6 +64,7 @@ class _DiceWidgetState extends State<DiceWidget> {
     _timer?.cancel();
     _timer = null;
     if (widget.isRolling) {
+      FlameAudio.play('dice_roll.m4a');
       _frame = 1;
       _timer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
         if (!mounted) {
