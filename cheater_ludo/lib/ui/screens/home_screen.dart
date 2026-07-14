@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'setup_screen.dart';
 import '../widgets/dice_painter.dart';
 import '../../utils/haptics.dart';
@@ -170,6 +171,50 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         ),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          final Uri url = Uri.parse('https://cheater-ludo.everesttechnologies.com.np/privacy-policy');
+                          if (!await launchUrl(url)) {
+                            debugPrint('Could not launch $url');
+                          }
+                        },
+                        child: const Text(
+                          'Privacy Policy',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                            decoration: TextDecoration.underline,
+                            decorationColor: Colors.white70,
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        ' | ',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          final Uri url = Uri.parse('https://cheater-ludo.everesttechnologies.com.np/terms');
+                          if (!await launchUrl(url)) {
+                            debugPrint('Could not launch $url');
+                          }
+                        },
+                        child: const Text(
+                          'Terms & Conditions',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                            decoration: TextDecoration.underline,
+                            decorationColor: Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

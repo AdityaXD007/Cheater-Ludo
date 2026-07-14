@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'setup_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'game_mode.dart';
 import 'game_screen.dart';
 import '../../utils/haptics.dart';
@@ -120,6 +121,81 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
     );
   }
 
+  void _showPrivacyPolicyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white.withValues(alpha: 0.95),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.privacy_tip_rounded, color: Color(0xFF1a6ab5)),
+              SizedBox(width: 8),
+              Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1e5aa0))),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Review our Privacy Policy and Terms to understand how we handle your data.',
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1a6ab5),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () async {
+                    final Uri url = Uri.parse('https://cheater-ludo.everesttechnologies.com.np/privacy-policy');
+                    if (!await launchUrl(url)) {
+                      debugPrint('Could not launch $url');
+                    }
+                  },
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('Privacy Policy'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1a6ab5),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () async {
+                    final Uri url = Uri.parse('https://cheater-ludo.everesttechnologies.com.np/terms');
+                    if (!await launchUrl(url)) {
+                      debugPrint('Could not launch $url');
+                    }
+                  },
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('Terms of Service'),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Haptics.tap();
+                Navigator.pop(context);
+              },
+              child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1a6ab5))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,6 +226,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       '⚔️ Select Mode',
@@ -165,6 +242,20 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
                             blurRadius: 8,
                           ),
                         ],
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.help_outline_rounded, color: Colors.white, size: 26),
+                        onPressed: () {
+                          Haptics.tap();
+                          _showPrivacyPolicyDialog();
+                        },
+                        tooltip: 'Privacy Policy',
                       ),
                     ),
                   ],

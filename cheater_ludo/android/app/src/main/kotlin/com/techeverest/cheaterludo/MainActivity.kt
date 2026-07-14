@@ -1,4 +1,4 @@
-package com.example.cheater_ludo
+package com.techeverest.cheaterludo
 
 import io.flutter.embedding.android.FlutterActivity
 
