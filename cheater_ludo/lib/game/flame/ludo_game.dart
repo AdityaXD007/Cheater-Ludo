@@ -20,6 +20,7 @@ class LudoGame extends FlameGame {
   
   // UI callbacks
   VoidCallback? onStateChanged;
+  void Function(String biasType)? onRiggedRoll;
   
   bool isRolling = false;
   bool isMoving = false;
@@ -28,7 +29,9 @@ class LudoGame extends FlameGame {
   final Map<int, AiPlayer> _aiPlayers = {};
 
   LudoGame(this.gameState) {
-    diceEngine = RiggedDiceEngine();
+    diceEngine = RiggedDiceEngine(
+      onRiggedRoll: (biasType) => onRiggedRoll?.call(biasType),
+    );
     if (gameState.riggedEngineState != null) {
       diceEngine.loadFromJson(gameState.riggedEngineState!);
     }

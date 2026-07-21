@@ -4,6 +4,7 @@ import '../../game/engine/game_state.dart';
 import '../../game/flame/ludo_game.dart';
 import '../../game/engine/player.dart';
 import '../widgets/dice_painter.dart';
+import '../widgets/rigged_badge_overlay.dart';
 import '../../utils/haptics.dart';
 
 class GameScreen extends StatefulWidget {
@@ -20,6 +21,8 @@ class _GameScreenState extends State<GameScreen> {
 
   bool _wasMoving = false;
   int _lastPlayerIndex = -1;
+  bool _showRiggedBadge = false;
+  String _biasType = '';
 
   @override
   void initState() {
@@ -42,6 +45,16 @@ class _GameScreenState extends State<GameScreen> {
         setState(() {});
       }
     };
+
+    _game.onRiggedRoll = (biasType) {
+      setState(() {
+        _showRiggedBadge = true;
+        _biasType = biasType;
+      });
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (mounted) setState(() => _showRiggedBadge = false);
+      });
+    };
   }
 
   Color _getColor(PlayerColor c) {
@@ -58,67 +71,14 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildCornerBadge(Player cp, bool isActive, bool isRolling, bool canRoll, {required bool isLeftCorner}) {
-    int? displayValue;
-    if (isActive && isRolling) {
-      displayValue = null;
-    } else {
-      displayValue = cp.lastRoll ?? 1;
-    }
-
-    Widget pinBadge = Container(
-      width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(Icons.location_on, color: _getColor(cp.color), size: 18),
-    );
-
-    // Only show dice for the active player
-    if (!isActive) {
-      return Container(
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _getColor(cp.color).withValues(alpha: 0.4), width: 1.5),
-        ),
-        child: pinBadge,
-      );
-    }
-
-    Widget diceSlot = DiceWidget(
-      value: displayValue,
+    return _CornerBadge(
+      cp: cp,
+      isActive: isActive,
       isRolling: isRolling,
-      rapidRoll: true,
-      size: 42.0,
-      borderRadius: 10.0,
-      border: Border.all(
-        color: const Color(0xFFffd700), 
-        width: 2.0
-      ),
-      pipColor: Colors.black87,
-      boxShadow: [BoxShadow(color: const Color(0xFFffd700).withValues(alpha: 0.4), blurRadius: 12)],
-      onTap: canRoll ? () {
-        Haptics.tap();
-        _game.rollDice();
-      } : null,
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _getColor(cp.color).withValues(alpha: 0.8), width: 1.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: isLeftCorner 
-          ? [pinBadge, const SizedBox(width: 6), diceSlot]
-          : [diceSlot, const SizedBox(width: 6), pinBadge],
-      ),
+      canRoll: canRoll,
+      isLeftCorner: isLeftCorner,
+      pinColor: _getColor(cp.color),
+      game: _game,
     );
   }
 
@@ -237,7 +197,18 @@ class _GameScreenState extends State<GameScreen> {
                               ),
                             ],
                           ),
-                          child: GameWidget(game: _game),
+                          child: Stack(
+                            children: [
+                              GameWidget(game: _game),
+                              if (_showRiggedBadge)
+                                Positioned(
+                                  top: 12,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(child: RiggedBadgeOverlay(biasType: _biasType)),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -260,6 +231,155 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CornerBadge extends StatefulWidget {
+  final Player cp;
+  final bool isActive;
+  final bool isRolling;
+  final bool canRoll;
+  final bool isLeftCorner;
+  final Color pinColor;
+  final LudoGame game;
+
+  const _CornerBadge({
+    required this.cp,
+    required this.isActive,
+    required this.isRolling,
+    required this.canRoll,
+    required this.isLeftCorner,
+    required this.pinColor,
+    required this.game,
+  });
+
+  @override
+  State<_CornerBadge> createState() => _CornerBadgeState();
+}
+
+class _CornerBadgeState extends State<_CornerBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _jumpAnimation;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _jumpAnimation = Tween<double>(begin: 0, end: -8.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+    _glowAnimation = Tween<double>(begin: 0.1, end: 0.7).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutSine),
+    );
+
+    if (widget.isActive) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_CornerBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.isActive && oldWidget.isActive) {
+      _controller.stop();
+      _controller.value = 0.0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    int? displayValue;
+    if (widget.isActive && widget.isRolling) {
+      displayValue = null;
+    } else {
+      displayValue = widget.cp.lastRoll ?? 1;
+    }
+
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final double scale = (shortestSide / 400).clamp(1.0, 1.8);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        Widget pinBadge = Container(
+          width: 26 * scale,
+          height: 26 * scale,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8 * scale),
+          ),
+          child: Transform.translate(
+            offset: Offset(0, widget.isActive ? _jumpAnimation.value : 0),
+            child: Icon(Icons.location_on, color: widget.pinColor, size: 24 * scale),
+          ),
+        );
+
+        if (!widget.isActive) {
+          return Container(
+            height: 60 * scale,
+            padding: EdgeInsets.all(5 * scale),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14 * scale),
+              border: Border.all(color: widget.pinColor.withValues(alpha: 0.4), width: 1.5 * scale),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [pinBadge],
+            ),
+          );
+        }
+
+        Widget diceSlot = DiceWidget(
+          value: displayValue,
+          isRolling: widget.isRolling,
+          rapidRoll: true,
+          size: 42.0 * scale,
+          borderRadius: 10.0 * scale,
+          border: Border.all(
+            color: const Color(0xFFffd700), 
+            width: 2.0 * scale
+          ),
+          pipColor: Colors.black87,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFffd700).withValues(alpha: _glowAnimation.value), 
+              blurRadius: 16 * scale,
+              spreadRadius: 2 * scale,
+            )
+          ],
+          onTap: widget.canRoll ? () {
+            Haptics.tap();
+            widget.game.rollDice();
+          } : null,
+        );
+
+        return Container(
+          height: 60 * scale,
+          padding: EdgeInsets.all(5 * scale),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(14 * scale),
+            border: Border.all(color: widget.pinColor.withValues(alpha: 0.8), width: 1.5 * scale),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: widget.isLeftCorner 
+              ? [pinBadge, SizedBox(width: 6 * scale), diceSlot]
+              : [diceSlot, SizedBox(width: 6 * scale), pinBadge],
+          ),
+        );
+      },
     );
   }
 }

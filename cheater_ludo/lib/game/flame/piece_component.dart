@@ -42,12 +42,18 @@ class PieceComponent extends PositionComponent with TapCallbacks {
     _updatePositionInstantly();
   }
 
+  double _visualRadius = 0;
+
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     var board = game.children.whereType<BoardComponent>().first;
-    width = board.cellSize * 0.6;
-    height = board.cellSize * 0.6;
+    
+    _visualRadius = board.cellSize * 0.3; // Half of 0.6
+    
+    // Ensure tap area is at least 40x40px for mobile accessibility
+    width = math.max(40.0, board.cellSize * 1.0);
+    height = math.max(40.0, board.cellSize * 1.0);
     
     // Only update position instantly if we are not currently animating.
     // This prevents UI state changes (like tapping) from causing a layout shift
@@ -91,8 +97,8 @@ class PieceComponent extends PositionComponent with TapCallbacks {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
-    canvas.drawCircle(Offset.zero, width / 2, currentPaint);
-    canvas.drawCircle(Offset.zero, width / 2, currentStroke);
+    canvas.drawCircle(Offset.zero, _visualRadius, currentPaint);
+    canvas.drawCircle(Offset.zero, _visualRadius, currentStroke);
     
     if (isValid) {
        // Oscillate opacity 0.6 -> 1.0 -> 0.6 every 600ms
@@ -104,7 +110,7 @@ class PieceComponent extends PositionComponent with TapCallbacks {
        
        canvas.drawCircle(
          Offset.zero, 
-         width / 2 + 2, 
+         _visualRadius + 2, 
          Paint()
            ..color = ringColor.withAlpha((pulseAlpha * 255).toInt())
            ..style = PaintingStyle.stroke
@@ -160,17 +166,22 @@ class PieceComponent extends PositionComponent with TapCallbacks {
 
   Vector2 _getVectorForPosition(int pos, BoardComponent board) {
     if (pos == -1) {
-      List<BoardPos> bases;
+      double p1 = 2.0;
+      double p2 = 4.0;
+      double xOffset = (piece.id == 0 || piece.id == 1) ? p1 : p2;
+      double yOffset = (piece.id == 0 || piece.id == 2) ? p1 : p2;
+      
+      int gridX = 0, gridY = 0;
       switch (player.color) {
-        case PlayerColor.red: bases = BoardConstants.redHomeBase; break;
-        case PlayerColor.green: bases = BoardConstants.greenHomeBase; break;
-        case PlayerColor.blue: bases = BoardConstants.blueHomeBase; break;
-        case PlayerColor.yellow: bases = BoardConstants.yellowHomeBase; break;
+        case PlayerColor.green: gridX = 0; gridY = 0; break;
+        case PlayerColor.blue: gridX = 9; gridY = 0; break;
+        case PlayerColor.red: gridX = 0; gridY = 9; break;
+        case PlayerColor.yellow: gridX = 9; gridY = 9; break;
       }
-      var bp = bases[piece.id];
+
       return Vector2(
-        board.boardOffset.x + (bp.x + 0.5) * board.cellSize,
-        board.boardOffset.y + (bp.y + 0.5) * board.cellSize,
+        board.boardOffset.x + (gridX + xOffset) * board.cellSize,
+        board.boardOffset.y + (gridY + yOffset) * board.cellSize,
       );
     }
     

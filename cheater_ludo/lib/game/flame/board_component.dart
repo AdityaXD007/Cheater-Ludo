@@ -116,10 +116,13 @@ class BoardComponent extends PositionComponent with HasGameReference<LudoGame> {
 
     // Draw 4 circles for home positions
     Paint circlePaint = Paint()..color = color;
-    canvas.drawCircle(Offset(boardOffset.x + (gridX + 2.5) * cellSize, boardOffset.y + (gridY + 2.5) * cellSize), cellSize * 0.8, circlePaint);
-    canvas.drawCircle(Offset(boardOffset.x + (gridX + 3.5) * cellSize, boardOffset.y + (gridY + 2.5) * cellSize), cellSize * 0.8, circlePaint);
-    canvas.drawCircle(Offset(boardOffset.x + (gridX + 2.5) * cellSize, boardOffset.y + (gridY + 3.5) * cellSize), cellSize * 0.8, circlePaint);
-    canvas.drawCircle(Offset(boardOffset.x + (gridX + 3.5) * cellSize, boardOffset.y + (gridY + 3.5) * cellSize), cellSize * 0.8, circlePaint);
+    double p1 = 2.0;
+    double p2 = 4.0;
+    double radius = cellSize * 0.7;
+    canvas.drawCircle(Offset(boardOffset.x + (gridX + p1) * cellSize, boardOffset.y + (gridY + p1) * cellSize), radius, circlePaint);
+    canvas.drawCircle(Offset(boardOffset.x + (gridX + p2) * cellSize, boardOffset.y + (gridY + p1) * cellSize), radius, circlePaint);
+    canvas.drawCircle(Offset(boardOffset.x + (gridX + p1) * cellSize, boardOffset.y + (gridY + p2) * cellSize), radius, circlePaint);
+    canvas.drawCircle(Offset(boardOffset.x + (gridX + p2) * cellSize, boardOffset.y + (gridY + p2) * cellSize), radius, circlePaint);
 
     if (colorName.isNotEmpty) {
       final textSpan = TextSpan(

@@ -5,6 +5,8 @@ import '../../game/engine/game_state.dart';
 import '../../utils/haptics.dart';
 import 'game_screen.dart';
 import 'game_mode.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/rig_gesture_coachmark.dart';
 
 // ─── Color Sets for Pawns ──────────────────────────────────────────────
 class PawnColorSet {
@@ -315,7 +317,7 @@ class TabSelector extends StatelessWidget {
                 label: '$count Players',
                 isActive: activePlayerCount == count,
                 onTap: () {
-                  Haptics.selection();
+                  Haptics.medium();
                   onChanged(count);
                 },
               ),
@@ -349,12 +351,13 @@ class _TabButton extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.red, width: 2.0),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: isActive
                     ? [const Color(0xFFFBDB6E), const Color(0xFFD89B2A)]
-                    : [const Color(0xFFA88A56), const Color(0xFF8A6E3E)],
+                    : [const Color(0xFFFBDB6E).withAlpha(153), const Color(0xFFD89B2A).withAlpha(153)],
               ),
               boxShadow: [
                 BoxShadow(
@@ -423,7 +426,7 @@ class _TabButton extends StatelessWidget {
                     style: TextStyle(
                       color: isActive
                           ? const Color(0xFF5A3A12)
-                          : const Color(0xFF8A6A3A),
+                          : const Color(0xFF5A3A12).withAlpha(153),
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -587,6 +590,8 @@ class _SetupScreenState extends State<SetupScreen> {
   late final List<PlayerConfig> _configs;
   int? _designatedWinnerId;
   Timer? _longPressTimer;
+  bool _showCoachMark = false;
+  final GlobalKey _firstPawnKey = GlobalKey();
 
   PlayerColor _humanColor = PlayerColor.red;
 
@@ -614,11 +619,34 @@ class _SetupScreenState extends State<SetupScreen> {
     } else {
       _configs = [
         PlayerConfig(id: 0, color: PlayerColor.red, name: 'Player 1', type: PlayerType.human),
-        PlayerConfig(id: 1, color: PlayerColor.yellow, name: 'Player 2', type: PlayerType.human),
-        PlayerConfig(id: 2, color: PlayerColor.green, name: 'Player 3', type: PlayerType.human),
-        PlayerConfig(id: 3, color: PlayerColor.blue, name: 'Player 4', type: PlayerType.human),
+        PlayerConfig(id: 1, color: PlayerColor.green, name: 'Player 2', type: PlayerType.human),
+        PlayerConfig(id: 2, color: PlayerColor.blue, name: 'Player 3', type: PlayerType.human),
+        PlayerConfig(id: 3, color: PlayerColor.yellow, name: 'Player 4', type: PlayerType.human),
       ];
     }
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowCoachMark());
+  }
+
+  Future<void> _maybeShowCoachMark() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeen = prefs.getBool('hasSeenRigTutorial') ?? false;
+    if (!hasSeen && mounted) {
+      setState(() => _showCoachMark = true);
+    }
+  }
+
+  Future<void> _dismissCoachMark() async {
+    if (!_showCoachMark) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasSeenRigTutorial', true);
+    if (mounted) {
+      setState(() => _showCoachMark = false);
+    }
+  }
+
+  void _showCoachMarkManually() {
+    setState(() => _showCoachMark = true);
   }
 
   void _updateColorsForVsComputer() {
@@ -666,6 +694,9 @@ class _SetupScreenState extends State<SetupScreen> {
       color: c.color,
       difficulty: c.type == PlayerType.ai ? c.difficulty : null,
     )).toList();
+
+    // Ensure players are in the standard clockwise order: Red, Green, Blue, Yellow
+    players.sort((a, b) => a.color.index.compareTo(b.color.index));
 
     var gameState = GameState(
       players: players,
@@ -859,6 +890,13 @@ class _SetupScreenState extends State<SetupScreen> {
               });
             },
           ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              icon: const Icon(Icons.help_outline, color: Color(0xFF8A6A3A)),
+              onPressed: _showCoachMarkManually,
+            ),
+          ),
 
           // ── PLAYER ROWS ─────────────────────────────────────────
           Expanded(
@@ -873,7 +911,9 @@ class _SetupScreenState extends State<SetupScreen> {
                 final isVsComputer = widget.mode == GameMode.vsComputer;
 
                 if (isVsComputer && index == 0) {
-                  return PlayerRow(
+                  return Container(
+                    key: _firstPawnKey,
+                    child: PlayerRow(
                     index: index,
                     name: 'You',
                     isActive: isActive,
@@ -887,6 +927,7 @@ class _SetupScreenState extends State<SetupScreen> {
                                 setState(() {
                                   _designatedWinnerId = config.id;
                                 });
+                                _dismissCoachMark();
                               },
                             );
                           }
@@ -900,7 +941,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         ...PlayerColor.values.where((c) => c != _humanColor).map((color) {
                           return GestureDetector(
                             onTap: () {
-                              Haptics.selection();
+                              Haptics.medium();
                               setState(() {
                                 _humanColor = color;
                                 _updateColorsForVsComputer();
@@ -921,10 +962,11 @@ class _SetupScreenState extends State<SetupScreen> {
                         }),
                       ],
                     ),
+                  ),
                   );
                 }
 
-                return PlayerRow(
+                Widget row = PlayerRow(
                   index: index,
                   name: config.name,
                   isActive: isActive,
@@ -939,6 +981,7 @@ class _SetupScreenState extends State<SetupScreen> {
                               setState(() {
                                 _designatedWinnerId = config.id;
                               });
+                              _dismissCoachMark();
                             },
                           );
                         }
@@ -950,6 +993,10 @@ class _SetupScreenState extends State<SetupScreen> {
                       ? () => _longPressTimer?.cancel()
                       : null,
                 );
+                if (index == 0) {
+                  row = Container(key: _firstPawnKey, child: row);
+                }
+                return row;
               },
             ),
           ),
@@ -982,6 +1029,29 @@ class _SetupScreenState extends State<SetupScreen> {
               ],
             ),
           ),
+
+          // ── COACH-MARK OVERLAY ───────────────────────────────────
+          if (_showCoachMark)
+            Positioned.fill(
+              child: Builder(
+                builder: (context) {
+                  // Dynamically find the first player row's position via GlobalKey
+                  // Pawn is at: left padding(20) + half pawn width(26), half pawn height(31) within the row
+                  Offset pawnCenter = const Offset(46, 200); // fallback
+                  final renderBox = _firstPawnKey.currentContext?.findRenderObject() as RenderBox?;
+                  final overlayBox = context.findRenderObject() as RenderBox?;
+                  if (renderBox != null && renderBox.hasSize && overlayBox != null && overlayBox.hasSize) {
+                    final rowPosGlobal = renderBox.localToGlobal(Offset.zero);
+                    final rowPosLocal = overlayBox.globalToLocal(rowPosGlobal);
+                    pawnCenter = Offset(rowPosLocal.dx + 46, rowPosLocal.dy + 31);
+                  }
+                  return RigGestureCoachMark(
+                    pawnCenter: pawnCenter,
+                    onDismiss: _dismissCoachMark,
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );

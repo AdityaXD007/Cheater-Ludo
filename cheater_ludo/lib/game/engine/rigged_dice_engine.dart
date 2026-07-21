@@ -4,11 +4,13 @@ import 'player.dart';
 import 'piece.dart';
 import 'board_constants.dart';
 import 'rigging_config.dart';
+import '../../utils/haptics.dart';
 
 class RiggedDiceEngine {
   final Random _random;
   final RiggingConfig config;
   final void Function(RollDebugInfo)? debugHook;
+  final void Function(String biasType)? onRiggedRoll;
 
   final Map<int, int> _turnCounts = {};
   final Map<int, int> _unfavorableStreaks = {};
@@ -22,6 +24,7 @@ class RiggedDiceEngine {
     int? seed,
     this.config = const RiggingConfig(),
     this.debugHook,
+    this.onRiggedRoll,
   }) : _random = seed != null ? Random(seed) : Random();
 
   // ---------------------------------------------------------------------------
@@ -60,6 +63,8 @@ class RiggedDiceEngine {
           int r = unfavorableRolls[_random.nextInt(unfavorableRolls.length)];
           r = _applySafeguards(state, currentPlayer, isWinner, r);
           _emitDebug(currentPlayer.id, r, 'L1_Emergency', 'Emergency sabotage: player threatening win', isWinner);
+          Haptics.medium();
+          onRiggedRoll?.call('Emergency Sabotage');
           return r;
         }
       }
@@ -138,12 +143,16 @@ class RiggedDiceEngine {
         _trackUnfavorableStreak(state, currentPlayer, isWinner, chosenRoll);
         chosenRoll = _applySafeguards(state, currentPlayer, isWinner, chosenRoll);
         _emitDebug(currentPlayer.id, chosenRoll, layerName, '$reason (Winner Bias applied)', isWinner);
+        Haptics.medium();
+        onRiggedRoll?.call('Winner Bias');
       } else {
         if (_random.nextDouble() < config.winnerSabotageProbabilityWhenNoBias && unfavorableRolls.isNotEmpty) {
           chosenRoll = unfavorableRolls[_random.nextInt(unfavorableRolls.length)];
           _trackUnfavorableStreak(state, currentPlayer, isWinner, chosenRoll);
           chosenRoll = _applySafeguards(state, currentPlayer, isWinner, chosenRoll);
           _emitDebug(currentPlayer.id, chosenRoll, layerName, '$reason (Winner Sabotage applied via 5% split)', isWinner);
+          Haptics.medium();
+          onRiggedRoll?.call('Winner Sabotage');
         } else {
           int r = _pureRandom();
           _trackUnfavorableStreak(state, currentPlayer, isWinner, r);
@@ -159,6 +168,8 @@ class RiggedDiceEngine {
         _trackUnfavorableStreak(state, currentPlayer, isWinner, chosenRoll);
         chosenRoll = _applySafeguards(state, currentPlayer, isWinner, chosenRoll);
         _emitDebug(currentPlayer.id, chosenRoll, layerName, '$reason (Loser Sabotage applied)', isWinner);
+        Haptics.medium();
+        onRiggedRoll?.call('Loser Sabotage');
       } else {
         int r = _pureRandom();
         _trackUnfavorableStreak(state, currentPlayer, isWinner, r);
