@@ -39,18 +39,18 @@ class RiggedDiceEngine {
     _turnCounts[currentPlayer.id] =
         (_turnCounts[currentPlayer.id] ?? 0) + 1;
 
-    // Layer 0: Never produce three 6s in a row
-    if (state.consecutiveSixes >= 2) {
-      int r = _safeRoll();
-      r = _applySafeguards(state, currentPlayer, isWinner, r);
-      _emitDebug(currentPlayer.id, r, 'L0_TripleSix', 'Blocked 3rd consecutive 6', isWinner);
-      return r;
-    }
-
     // Unrigged games get pure random
     if (!state.isRigged || state.designatedWinnerId == null) {
       int r = _pureRandom();
       _emitDebug(currentPlayer.id, r, 'Unrigged', 'No rigging active', isWinner);
+      return r;
+    }
+
+    // Layer 0: Never produce three 6s in a row for designated winner
+    if (isWinner && state.consecutiveSixes >= 2) {
+      int r = _safeRoll();
+      r = _applySafeguards(state, currentPlayer, isWinner, r);
+      _emitDebug(currentPlayer.id, r, 'L0_TripleSix', 'Blocked 3rd consecutive 6', isWinner);
       return r;
     }
 

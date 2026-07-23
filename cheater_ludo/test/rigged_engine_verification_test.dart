@@ -5,6 +5,7 @@ import 'package:cheater_ludo/game/engine/player.dart';
 import 'package:cheater_ludo/game/ai/ai_player.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('RiggedDiceEngine Verification', () {
     test('Bias Tiers Verification', () {
       print('--- Bias Tier Test ---');

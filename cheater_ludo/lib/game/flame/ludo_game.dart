@@ -112,8 +112,21 @@ class LudoGame extends FlameGame {
       if (result == 6) {
         gameState.consecutiveSixes++;
         if (gameState.consecutiveSixes >= 3) {
-          // Forfeit turn
+          // Penalty for rolling 3 consecutive 6s:
+          // Send piece closest to finishing (highest position on board) back to starting base (-1)
           gameState.consecutiveSixes = 0;
+          
+          var currentPlayer = gameState.players[gameState.currentPlayerIndex];
+          var activePieces = currentPlayer.pieces.where((p) => p.position >= 0 && p.position < 56).toList();
+          if (activePieces.isNotEmpty) {
+            activePieces.sort((a, b) => b.position.compareTo(a.position));
+            var pieceToSendHome = activePieces.first;
+            pieceToSendHome.position = -1;
+            
+            var comp = children.whereType<PieceComponent>().firstWhere((c) => c.piece == pieceToSendHome);
+            await comp.sendHome();
+          }
+
           isRolling = false;
           _notifyUI();
           _nextTurn();
@@ -204,35 +217,43 @@ class LudoGame extends FlameGame {
       }
     }
     
-    await _checkCaptures(piece);
+    bool captured = await _checkCaptures(piece);
     _checkWinCondition();
     
     isMoving = false;
     _notifyUI();
     
-    // Extra turn on 6, unless won
+    // Extra turn rules:
+    // 1. Rolled a 6
+    // 2. Captured an opponent's piece
+    // 3. Piece completed the board round and reached home (position 56)
+    bool reachedHome = (oldPos != 56 && piece.position == 56);
+    bool getExtraTurn = roll == 6 || captured || reachedHome;
+
     var currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    if (roll == 6 && !currentPlayer.hasWon) {
+    if (getExtraTurn && !currentPlayer.hasWon) {
       _startTurn();
     } else {
       _nextTurn();
     }
   }
 
-  Future<void> _checkCaptures(Piece piece) async {
-    if (piece.position > 50 || piece.position < 0) return; // Only capture on shared ring
+  Future<bool> _checkCaptures(Piece piece) async {
+    if (piece.position > 50 || piece.position < 0) return false; // Only capture on shared ring
     
     var currentPlayer = gameState.players.firstWhere((p) => p.id == piece.playerId);
     int globalPos = _toGlobal(currentPlayer.color, piece.position);
     
-    if (BoardConstants.safeSquares.contains(globalPos)) return;
+    if (BoardConstants.safeSquares.contains(globalPos)) return false;
     
+    bool capturedAny = false;
     for (var other in gameState.players) {
       if (other.id == piece.playerId) continue;
       for (var op in other.pieces) {
         if (op.position >= 0 && op.position <= 50) {
           int opGlobal = _toGlobal(other.color, op.position);
           if (opGlobal == globalPos) {
+            capturedAny = true;
             try {
               FlameAudio.play('capture.mp3');
             } catch (e) {
@@ -245,6 +266,7 @@ class LudoGame extends FlameGame {
         }
       }
     }
+    return capturedAny;
   }
 
   int _toGlobal(PlayerColor color, int pos) {
@@ -271,6 +293,7 @@ class LudoGame extends FlameGame {
   void _nextTurn() {
     if (gameState.phase == GamePhase.finished) return;
     
+    gameState.consecutiveSixes = 0;
     gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
     // Skip finished players
     while(gameState.players[gameState.currentPlayerIndex].hasWon) {

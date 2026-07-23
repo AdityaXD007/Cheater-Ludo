@@ -4,6 +4,7 @@ import 'package:cheater_ludo/game/engine/game_state.dart';
 import 'package:cheater_ludo/game/engine/player.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('RiggedDiceEngine Tests', () {
     test('Pure random variance check (Unrigged)', () {
       final engine = RiggedDiceEngine();
