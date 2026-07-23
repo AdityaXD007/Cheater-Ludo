@@ -142,8 +142,8 @@ class _GameScreenState extends State<GameScreen> {
       body: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF1a1a2e),
-          image: DecorationImage(
-            image: const AssetImage('assets/images/game_background.png'),
+          image: const DecorationImage(
+            image: AssetImage('assets/images/game_background.webp'),
             fit: BoxFit.cover,
             opacity: 0.65, // Dim background image for contrast
           ),

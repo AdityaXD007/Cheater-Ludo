@@ -479,6 +479,7 @@ class PlayerRow extends StatelessWidget {
   final GestureTapUpCallback? onPawnTapUp;
   final GestureTapCancelCallback? onPawnTapCancel;
   final Widget? customContent;
+  final Key? pawnKey;
 
   const PlayerRow({
     super.key,
@@ -492,6 +493,7 @@ class PlayerRow extends StatelessWidget {
     this.onPawnTapUp,
     this.onPawnTapCancel,
     this.customContent,
+    this.pawnKey,
   });
 
   @override
@@ -502,6 +504,7 @@ class PlayerRow extends StatelessWidget {
         children: [
           // Pawn with long-press rig gesture
           GestureDetector(
+            key: pawnKey,
             onTapDown: onPawnTapDown,
             onTapUp: onPawnTapUp,
             onTapCancel: onPawnTapCancel,
@@ -632,7 +635,9 @@ class _SetupScreenState extends State<SetupScreen> {
     final prefs = await SharedPreferences.getInstance();
     final hasSeen = prefs.getBool('hasSeenRigTutorial') ?? false;
     if (!hasSeen && mounted) {
-      setState(() => _showCoachMark = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _showCoachMark = true);
+      });
     }
   }
 
@@ -646,7 +651,9 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   void _showCoachMarkManually() {
-    setState(() => _showCoachMark = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _showCoachMark = true);
+    });
   }
 
   void _updateColorsForVsComputer() {
@@ -910,10 +917,10 @@ class _SetupScreenState extends State<SetupScreen> {
                 final isRigged = _designatedWinnerId == config.id;
                 final isVsComputer = widget.mode == GameMode.vsComputer;
 
+                Widget rowWidget;
                 if (isVsComputer && index == 0) {
-                  return Container(
-                    key: _firstPawnKey,
-                    child: PlayerRow(
+                  rowWidget = PlayerRow(
+                    pawnKey: _firstPawnKey,
                     index: index,
                     name: 'You',
                     isActive: isActive,
@@ -924,6 +931,7 @@ class _SetupScreenState extends State<SetupScreen> {
                             _longPressTimer = Timer(
                               const Duration(milliseconds: 800),
                               () {
+                                Haptics.medium();
                                 setState(() {
                                   _designatedWinnerId = config.id;
                                 });
@@ -962,41 +970,40 @@ class _SetupScreenState extends State<SetupScreen> {
                         }),
                       ],
                     ),
-                  ),
+                  );
+                } else {
+                  rowWidget = PlayerRow(
+                    pawnKey: index == 0 ? _firstPawnKey : null,
+                    index: index,
+                    name: config.name,
+                    isActive: isActive,
+                    isRigged: isRigged,
+                    pawnColors: _getPawnColor(config.color),
+                    onEdit: (isActive && (!isVsComputer || index == 0)) ? () => _showRenameDialog(index) : null,
+                    onPawnTapDown: isActive
+                        ? (_) {
+                            _longPressTimer = Timer(
+                              const Duration(milliseconds: 800),
+                              () {
+                                Haptics.medium();
+                                setState(() {
+                                  _designatedWinnerId = config.id;
+                                });
+                                _dismissCoachMark();
+                              },
+                            );
+                          }
+                        : null,
+                    onPawnTapUp: isActive
+                        ? (_) => _longPressTimer?.cancel()
+                        : null,
+                    onPawnTapCancel: isActive
+                        ? () => _longPressTimer?.cancel()
+                        : null,
                   );
                 }
 
-                Widget row = PlayerRow(
-                  index: index,
-                  name: config.name,
-                  isActive: isActive,
-                  isRigged: isRigged,
-                  pawnColors: _getPawnColor(config.color),
-                  onEdit: (isActive && (!isVsComputer || index == 0)) ? () => _showRenameDialog(index) : null,
-                  onPawnTapDown: isActive
-                      ? (_) {
-                          _longPressTimer = Timer(
-                            const Duration(milliseconds: 800),
-                            () {
-                              setState(() {
-                                _designatedWinnerId = config.id;
-                              });
-                              _dismissCoachMark();
-                            },
-                          );
-                        }
-                      : null,
-                  onPawnTapUp: isActive
-                      ? (_) => _longPressTimer?.cancel()
-                      : null,
-                  onPawnTapCancel: isActive
-                      ? () => _longPressTimer?.cancel()
-                      : null,
-                );
-                if (index == 0) {
-                  row = Container(key: _firstPawnKey, child: row);
-                }
-                return row;
+                return rowWidget;
               },
             ),
           ),
@@ -1033,23 +1040,9 @@ class _SetupScreenState extends State<SetupScreen> {
           // ── COACH-MARK OVERLAY ───────────────────────────────────
           if (_showCoachMark)
             Positioned.fill(
-              child: Builder(
-                builder: (context) {
-                  // Dynamically find the first player row's position via GlobalKey
-                  // Pawn is at: left padding(20) + half pawn width(26), half pawn height(31) within the row
-                  Offset pawnCenter = const Offset(46, 200); // fallback
-                  final renderBox = _firstPawnKey.currentContext?.findRenderObject() as RenderBox?;
-                  final overlayBox = context.findRenderObject() as RenderBox?;
-                  if (renderBox != null && renderBox.hasSize && overlayBox != null && overlayBox.hasSize) {
-                    final rowPosGlobal = renderBox.localToGlobal(Offset.zero);
-                    final rowPosLocal = overlayBox.globalToLocal(rowPosGlobal);
-                    pawnCenter = Offset(rowPosLocal.dx + 46, rowPosLocal.dy + 31);
-                  }
-                  return RigGestureCoachMark(
-                    pawnCenter: pawnCenter,
-                    onDismiss: _dismissCoachMark,
-                  );
-                },
+              child: RigGestureCoachMark(
+                targetKey: _firstPawnKey,
+                onDismiss: _dismissCoachMark,
               ),
             ),
         ],

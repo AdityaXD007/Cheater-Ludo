@@ -45,6 +45,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
         );
       }
     }
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override

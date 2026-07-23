@@ -97,6 +97,7 @@ class _DiceWidgetState extends State<DiceWidget> {
   @override
   Widget build(BuildContext context) {
     Widget diceContent;
+    final cachePx = (widget.size * MediaQuery.of(context).devicePixelRatio).toInt().clamp(64, 256);
     
     if (widget.isRolling) {
       // Rolling state: loop through 25 pre-rendered tumble frames
@@ -105,6 +106,8 @@ class _DiceWidgetState extends State<DiceWidget> {
         'assets/dice/roll/roll_$frameStr.png',
         width: widget.size,
         height: widget.size,
+        cacheWidth: cachePx,
+        cacheHeight: cachePx,
         gaplessPlayback: true,
         fit: BoxFit.contain,
       );
@@ -115,6 +118,8 @@ class _DiceWidgetState extends State<DiceWidget> {
         'assets/dice/final/face_$face.png',
         width: widget.size,
         height: widget.size,
+        cacheWidth: cachePx,
+        cacheHeight: cachePx,
         gaplessPlayback: true,
         fit: BoxFit.contain,
       );
@@ -126,23 +131,25 @@ class _DiceWidgetState extends State<DiceWidget> {
       child: diceContent,
     );
 
-    return GestureDetector(
-      onTap: widget.onTap != null ? () {
-        Haptics.tap();
-        widget.onTap!();
-      } : null,
-      child: Container(
-        width: widget.size,
-        height: widget.size,
-        decoration: BoxDecoration(
-          color: Colors.transparent, // Background baked into sprite
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          border: widget.border,
-          boxShadow: widget.boxShadow,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          child: diceContent,
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: widget.onTap != null ? () {
+          Haptics.tap();
+          widget.onTap!();
+        } : null,
+        child: Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            color: Colors.transparent, // Background baked into sprite
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            border: widget.border,
+            boxShadow: widget.boxShadow,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            child: diceContent,
+          ),
         ),
       ),
     );

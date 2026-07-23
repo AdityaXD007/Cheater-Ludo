@@ -202,7 +202,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/images/Home_Background.png'),
+            image: AssetImage('assets/images/Home_Background.webp'),
             fit: BoxFit.cover,
           ),
         ),
@@ -285,7 +285,9 @@ class _ModeSelectScreenState extends State<ModeSelectScreen>
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: Image.asset(
-                    'assets/images/logo.png',
+                    'assets/images/logo.webp',
+                    cacheWidth: 176,
+                    cacheHeight: 176,
                     fit: BoxFit.cover,
                   ),
                 ),

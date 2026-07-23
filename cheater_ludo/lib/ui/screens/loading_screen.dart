@@ -98,33 +98,25 @@ class _LoadingScreenState extends State<LoadingScreen>
   }
 
   Future<void> _preloadAssets() async {
-    final stopwatch = Stopwatch()..start();
-
     // Wait for context to be available
     await Future.delayed(Duration.zero);
     if (!mounted) return;
 
-    // Precache heavy image assets
+    // Precache compressed image assets
     await Future.wait([
       precacheImage(
-        const AssetImage('assets/images/logo.png'),
+        const AssetImage('assets/images/logo.webp'),
         context,
       ),
       precacheImage(
-        const AssetImage('assets/images/game_background.png'),
+        const AssetImage('assets/images/game_background.webp'),
         context,
       ),
       precacheImage(
-        const AssetImage('assets/images/Home_Background.png'),
+        const AssetImage('assets/images/Home_Background.webp'),
         context,
       ),
     ]);
-
-    // Enforce minimum splash duration of 2 seconds
-    final elapsed = stopwatch.elapsedMilliseconds;
-    if (elapsed < 2000) {
-      await Future.delayed(Duration(milliseconds: 2000 - elapsed));
-    }
 
     if (!mounted) return;
 
@@ -166,7 +158,7 @@ class _LoadingScreenState extends State<LoadingScreen>
         height: double.infinity,
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/images/Home_Background.png'),
+            image: AssetImage('assets/images/Home_Background.webp'),
             fit: BoxFit.cover,
           ),
         ),
@@ -204,7 +196,9 @@ class _LoadingScreenState extends State<LoadingScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(32),
                     child: Image.asset(
-                      'assets/images/logo.png',
+                      'assets/images/logo.webp',
+                      cacheWidth: 280,
+                      cacheHeight: 280,
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -295,32 +289,34 @@ class _LoadingScreenState extends State<LoadingScreen>
   }
 
   Widget _buildLoader() {
-    return AnimatedBuilder(
-      key: const ValueKey('loader'),
-      animation: _spinnerController,
-      builder: (context, child) {
-        return Transform.rotate(
-          angle: _spinnerController.value * 2 * pi,
-          child: child,
-        );
-      },
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1e5aa0).withValues(alpha: 0.15),
-              blurRadius: 16,
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.casino_rounded,
-          color: Color(0xFF1a6ab5),
-          size: 26,
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        key: const ValueKey('loader'),
+        animation: _spinnerController,
+        builder: (context, child) {
+          return Transform.rotate(
+            angle: _spinnerController.value * 2 * pi,
+            child: child,
+          );
+        },
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1e5aa0).withValues(alpha: 0.15),
+                blurRadius: 16,
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.casino_rounded,
+            color: Color(0xFF1a6ab5),
+            size: 26,
+          ),
         ),
       ),
     );

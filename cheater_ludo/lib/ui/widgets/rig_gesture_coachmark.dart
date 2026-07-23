@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 /// A coach-mark overlay that points at the first player's pawn icon,
 /// showing an animated "hold to rig" gesture hint.
 class RigGestureCoachMark extends StatefulWidget {
-  /// Offset of the pawn widget relative to the overlay's coordinate space.
-  final Offset pawnCenter;
+  /// GlobalKey of the target pawn widget to highlight.
+  final GlobalKey targetKey;
   /// Called when the coach-mark should be dismissed.
   final VoidCallback onDismiss;
 
   const RigGestureCoachMark({
     super.key,
-    required this.pawnCenter,
+    required this.targetKey,
     required this.onDismiss,
   });
 
@@ -27,9 +27,13 @@ class _RigGestureCoachMarkState extends State<RigGestureCoachMark>
   late final Animation<double> _progressAnim;
   late final Animation<double> _fadeAnim;
 
+  Offset? _pawnCenter;
+
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _calculatePosition());
 
     // Pulsing hand icon: scale 1.0 → 1.15 → 1.0, repeating
     _pulseController = AnimationController(
@@ -62,6 +66,23 @@ class _RigGestureCoachMarkState extends State<RigGestureCoachMark>
     });
   }
 
+  void _calculatePosition() {
+    if (!mounted) return;
+    final renderBox = widget.targetKey.currentContext?.findRenderObject() as RenderBox?;
+    final overlayBox = context.findRenderObject() as RenderBox?;
+    if (renderBox != null && renderBox.hasSize && overlayBox != null && overlayBox.hasSize) {
+      final globalCenter = renderBox.localToGlobal(
+        Offset(renderBox.size.width / 2, renderBox.size.height / 2),
+      );
+      final localCenter = overlayBox.globalToLocal(globalCenter);
+      if (_pawnCenter != localCenter) {
+        setState(() {
+          _pawnCenter = localCenter;
+        });
+      }
+    }
+  }
+
   void _dismiss() {
     _fadeController.reverse().then((_) {
       if (mounted) widget.onDismiss();
@@ -78,6 +99,16 @@ class _RigGestureCoachMarkState extends State<RigGestureCoachMark>
 
   @override
   Widget build(BuildContext context) {
+    // If not calculated yet, attempt post-frame calculation and render nothing for 1 frame
+    if (_pawnCenter == null) {
+      _calculatePosition();
+      if (_pawnCenter == null) {
+        return const SizedBox.shrink();
+      }
+    }
+
+    final pawnCenter = _pawnCenter!;
+
     return FadeTransition(
       opacity: _fadeAnim,
       child: GestureDetector(
@@ -93,8 +124,8 @@ class _RigGestureCoachMarkState extends State<RigGestureCoachMark>
 
               // Circular progress ring around pawn
               Positioned(
-                left: widget.pawnCenter.dx - 38,
-                top: widget.pawnCenter.dy - 38,
+                left: pawnCenter.dx - 38,
+                top: pawnCenter.dy - 38,
                 child: AnimatedBuilder(
                   animation: _progressAnim,
                   builder: (context, child) {
@@ -116,8 +147,8 @@ class _RigGestureCoachMarkState extends State<RigGestureCoachMark>
 
               // Cutout highlight where the pawn sits (bright circle)
               Positioned(
-                left: widget.pawnCenter.dx - 30,
-                top: widget.pawnCenter.dy - 30,
+                left: pawnCenter.dx - 30,
+                top: pawnCenter.dy - 30,
                 child: Container(
                   width: 60,
                   height: 60,
@@ -137,8 +168,8 @@ class _RigGestureCoachMarkState extends State<RigGestureCoachMark>
 
               // Pulsing hand icon
               Positioned(
-                left: widget.pawnCenter.dx - 20,
-                top: widget.pawnCenter.dy - 56,
+                left: pawnCenter.dx - 20,
+                top: pawnCenter.dy - 56,
                 child: ScaleTransition(
                   scale: _pulseAnim,
                   child: const Icon(
@@ -158,8 +189,8 @@ class _RigGestureCoachMarkState extends State<RigGestureCoachMark>
 
               // Caption label
               Positioned(
-                left: widget.pawnCenter.dx + 36,
-                top: widget.pawnCenter.dy - 14,
+                left: pawnCenter.dx + 36,
+                top: pawnCenter.dy - 14,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
