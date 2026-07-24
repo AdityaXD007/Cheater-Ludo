@@ -21,9 +21,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
       'icon': Icons.casino,
     },
     {
-      'title': 'Watch for the RIGGED Flag',
-      'description': 'Long-press a player\'s pawn icon for 2 seconds to secretly designate them as the rigged winner. When their dice rolls get nudged during the game, everyone playing will see a RIGGED badge flash on screen — so it\'s a surprise twist, not a secret cheat.',
-      'icon': Icons.warning_amber_rounded,
+      'title': 'Secretly Rig the Game',
+      'description': 'Long-press a player\'s pawn icon for 2 seconds to secretly designate them as the rigged winner. Their dice rolls will be secretly nudged during the game without showing any text or indicator on screen!',
+      'icon': Icons.stars_rounded,
     },
     {
       'title': 'It\'s All in Good Fun',

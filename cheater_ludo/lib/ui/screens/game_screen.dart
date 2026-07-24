@@ -4,7 +4,6 @@ import '../../game/engine/game_state.dart';
 import '../../game/flame/ludo_game.dart';
 import '../../game/engine/player.dart';
 import '../widgets/dice_painter.dart';
-import '../widgets/rigged_badge_overlay.dart';
 import '../../utils/haptics.dart';
 
 class GameScreen extends StatefulWidget {
@@ -21,8 +20,6 @@ class _GameScreenState extends State<GameScreen> {
 
   bool _wasMoving = false;
   int _lastPlayerIndex = -1;
-  bool _showRiggedBadge = false;
-  String _biasType = '';
 
   @override
   void initState() {
@@ -44,16 +41,6 @@ class _GameScreenState extends State<GameScreen> {
         
         setState(() {});
       }
-    };
-
-    _game.onRiggedRoll = (biasType) {
-      setState(() {
-        _showRiggedBadge = true;
-        _biasType = biasType;
-      });
-      Future.delayed(const Duration(milliseconds: 900), () {
-        if (mounted) setState(() => _showRiggedBadge = false);
-      });
     };
   }
 
@@ -197,18 +184,7 @@ class _GameScreenState extends State<GameScreen> {
                               ),
                             ],
                           ),
-                          child: Stack(
-                            children: [
-                              GameWidget(game: _game),
-                              if (_showRiggedBadge)
-                                Positioned(
-                                  top: 12,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(child: RiggedBadgeOverlay(biasType: _biasType)),
-                                ),
-                            ],
-                          ),
+                          child: GameWidget(game: _game),
                         ),
                       ),
                     ),
